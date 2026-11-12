@@ -1,10 +1,12 @@
 set(CORE_TEST_TARGETS
     core_pcm_math_test
     core_mixer_test
+    core_ring_buffer_test
 )
 
 add_executable(core_pcm_math_test core/pcm_math_test.cpp)
 add_executable(core_mixer_test core/mixer_test.cpp)
+add_executable(core_ring_buffer_test core/ring_buffer_test.cpp)
 
 foreach(test_target ${CORE_TEST_TARGETS})
     target_link_libraries(${test_target} PRIVATE ts3toolkit_core)

@@ -1,5 +1,6 @@
 add_library(ts3toolkit_core STATIC
     core/mixer.cpp
+    core/ring_buffer.cpp
 )
 
 target_include_directories(ts3toolkit_core
