@@ -5,6 +5,8 @@ add_library(ts3toolkit_core STATIC
     config/config_store.cpp
     audio/miniaudio_impl.cpp
     audio/sound_decoder.cpp
+    audio/microphone_capture.cpp
+    audio/audio_engine.cpp
 )
 
 target_include_directories(ts3toolkit_core
