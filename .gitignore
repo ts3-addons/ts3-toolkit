@@ -1,0 +1,46 @@
+# Build outputs
+/build/
+/out/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+cmake-build-*/
+*.obj
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.tlog
+*.log
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sln.docstates
+*.aps
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+
+# Packaged plugin artifacts
+*.ts3_plugin
+
+# OS and editor
+Thumbs.db
+.DS_Store
+*.swp
+*~
