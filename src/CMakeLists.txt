@@ -7,6 +7,8 @@ add_library(ts3toolkit_core STATIC
     audio/sound_decoder.cpp
     audio/microphone_capture.cpp
     audio/audio_engine.cpp
+    platform/system_clock.cpp
+    entrance/entrance_controller.cpp
 )
 
 target_include_directories(ts3toolkit_core
