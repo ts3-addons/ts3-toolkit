@@ -31,8 +31,14 @@ DecodeResult SoundDecoder::decodeFile(const std::string& path) const {
 
     ma_decoder decoder;
 #if defined(_WIN32)
-    ma_result init_result = ma_decoder_init_file_w(
-        std::filesystem::u8path(path).c_str(), &config, &decoder);
+    ma_result init_result;
+    try {
+        init_result = ma_decoder_init_file_w(
+            std::filesystem::u8path(path).c_str(), &config, &decoder);
+    } catch (const std::exception&) {
+        result.status = DecodeStatus::kFileNotFound;
+        return result;
+    }
 #else
     ma_result init_result = ma_decoder_init_file(path.c_str(), &config, &decoder);
 #endif

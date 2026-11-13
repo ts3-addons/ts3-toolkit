@@ -111,6 +111,10 @@ void runTests() {
     fs::copy_file(wav_path, unicode_path, fs::copy_options::overwrite_existing);
     CHECK_EQ(decoder.decodeFile(unicode_path.u8string()).status, DecodeStatus::kOk);
     fs::remove(unicode_path);
+#if defined(_WIN32)
+    CHECK_EQ(decoder.decodeFile(std::string("\xff", 1)).status,
+             DecodeStatus::kFileNotFound);
+#endif
 
     // Missing file.
     DecodeResult missing = decoder.decodeFile(tempPath("missing.wav"));

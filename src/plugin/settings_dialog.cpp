@@ -132,6 +132,11 @@ void showSettingsDialog(void* parent, const std::string& config_directory) {
         return;
     }
     state.document = std::move(loaded.document);
+    if (!state.document.entrance_sound.sound_file.empty() &&
+        wide(state.document.entrance_sound.sound_file).empty()) {
+        MessageBoxW(static_cast<HWND>(parent), L"音效路径编码无效，未覆盖原配置。", L"TS3Toolkit", MB_OK | MB_ICONERROR);
+        return;
+    }
     HMODULE module = nullptr;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                        reinterpret_cast<LPCWSTR>(&showSettingsDialog), &module);
