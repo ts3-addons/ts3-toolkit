@@ -3,6 +3,7 @@
 #include "ts3toolkit/audio/decoded_sound.h"
 #include "ts3toolkit/audio/microphone_capture.h"
 #include "ts3toolkit/core/types.h"
+#include "ts3toolkit/core/ring_buffer.h"
 
 #include <atomic>
 #include <cstddef>
@@ -31,6 +32,8 @@ public:
     bool startCapture();
     void stopCapture();
     bool captureRunning() const;
+    bool startMonitor();
+    void stopMonitor();
 
     // Start overlaying a sound on the next frame, replacing any current one.
     // The volume is baked into the prepared overlay so the pump stays integer.
@@ -44,7 +47,12 @@ public:
     void fillFrame(core::Sample* output, std::size_t count);
 
 private:
+    static void monitorCallback(ma_device* device, void* output,
+                                const void* input, ma_uint32 frame_count);
     MicrophoneCapture capture_;
+    core::RingBuffer monitor_buffer_;
+    ma_device monitor_device_{};
+    bool monitor_running_ = false;
     std::atomic<bool> playing_;
 
     // Overlay swap is short (vector move) so the real-time pump is never held

@@ -9,12 +9,46 @@ namespace ts3toolkit::audio {
 
 AudioEngine::AudioEngine(std::size_t capture_ring_capacity)
     : capture_(capture_ring_capacity),
+      monitor_buffer_(core::kSampleRateHz / 2),
       playing_(false),
       overlay_(),
       overlay_position_(0) {}
 
 AudioEngine::~AudioEngine() {
+    stopMonitor();
     stopCapture();
+}
+
+void AudioEngine::monitorCallback(ma_device* device, void* output,
+                                  const void*, ma_uint32 frame_count) {
+    auto* self = static_cast<AudioEngine*>(device->pUserData);
+    auto* samples = static_cast<core::Sample*>(output);
+    const auto read = self->monitor_buffer_.read(samples, frame_count);
+    std::fill(samples + read, samples + frame_count, 0);
+}
+
+bool AudioEngine::startMonitor() {
+    if (monitor_running_) return true;
+    ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.sampleRate = core::kSampleRateHz;
+    config.playback.format = ma_format_s16;
+    config.playback.channels = core::kChannelCount;
+    config.dataCallback = &AudioEngine::monitorCallback;
+    config.pUserData = this;
+    if (ma_device_init(nullptr, &config, &monitor_device_) != MA_SUCCESS) return false;
+    if (ma_device_start(&monitor_device_) != MA_SUCCESS) {
+        ma_device_uninit(&monitor_device_);
+        return false;
+    }
+    monitor_running_ = true;
+    return true;
+}
+
+void AudioEngine::stopMonitor() {
+    if (!monitor_running_) return;
+    ma_device_uninit(&monitor_device_);
+    monitor_running_ = false;
+    monitor_buffer_.reset();
 }
 
 bool AudioEngine::startCapture() {
@@ -72,6 +106,9 @@ void AudioEngine::fillFrame(core::Sample* output, std::size_t count) {
     }
 
     const std::size_t to_mix = (std::min)(count, remaining);
+    if (monitor_running_) {
+        monitor_buffer_.write(overlay_.data() + overlay_position_, to_mix);
+    }
     core::mixAdd(output, overlay_.data() + overlay_position_, to_mix);
     overlay_position_ += to_mix;
 

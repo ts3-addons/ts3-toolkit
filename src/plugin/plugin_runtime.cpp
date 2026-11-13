@@ -62,6 +62,10 @@ bool PluginRuntime::initialize() {
     // Decode before scheduling so the pump never performs file I/O.
     reloadSound(settings_doc_.entrance_sound);
 
+    if (settings_doc_.entrance_sound.local_monitor && !audio_engine_.startMonitor()) {
+        client_.log("local audio monitor failed to start", LogSeverity::kWarning);
+    }
+
     // Advance the controller on the pump's fixed cadence and keep the
     // transmission gating aligned with overlay playback.
     custom_device_.setFrameHook([this] {
@@ -75,6 +79,7 @@ bool PluginRuntime::initialize() {
     });
 
     if (!custom_device_.start()) {
+        audio_engine_.stopMonitor();
         client_.log("failed to start custom capture device",
                     LogSeverity::kError);
         return false;
@@ -90,6 +95,7 @@ void PluginRuntime::shutdown() {
     }
 
     custom_device_.stop();
+    audio_engine_.stopMonitor();
 
     // Restore the user's original talk state after the pump has stopped.
     if (transmission_forced_) {
@@ -133,6 +139,8 @@ void PluginRuntime::onClientMove(uint64_t connection_id, uint16_t client_id,
         return;  // Movement of other clients is ignored.
     }
     if (new_channel_id == 0) {
+        std::lock_guard<std::mutex> lock(controller_mutex_);
+        controller_.cancelPending();
         return;  // Disconnects and leaves never trigger.
     }
 
@@ -187,14 +195,14 @@ void PluginRuntime::reloadSound(
 
 std::string PluginRuntime::resolveSoundPath(
     const std::string& configured) const {
-    const fs::path configured_path(configured);
+    const fs::path configured_path = fs::u8path(configured);
     if (configured_path.is_absolute()) {
         return configured;
     }
     if (data_directory_.empty()) {
         return {};
     }
-    return (fs::path(data_directory_) / configured_path).string();
+    return (fs::path(data_directory_) / configured_path).u8string();
 }
 
 }  // namespace ts3toolkit::plugin

@@ -59,6 +59,12 @@ The custom device is registered for capture only at 48 kHz mono. The pump always
 produces frames at a fixed cadence; when no entrance sound is queued, the
 microphone passes through unchanged.
 
+When local monitoring is enabled, the pump also sends the volume-adjusted
+overlay samples to a bounded single-producer/single-consumer buffer. A separate
+playback device drains that buffer to the system default output. Microphone
+samples are never routed to the monitor. If playback cannot start, capture and
+transmission continue without monitoring.
+
 ## Threading model
 
 - **Client callback thread**: runs `ts3plugin_*` event functions. Callbacks only
