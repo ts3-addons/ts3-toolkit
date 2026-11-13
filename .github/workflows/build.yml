@@ -1,0 +1,114 @@
+name: Build and release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+concurrency:
+  group: ts3toolkit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test, and package
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DTS3TOOLKIT_BUILD_TESTS=ON
+
+      - name: Build Release configuration
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      - name: Run tests
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Build TeamSpeak plugin package
+        shell: pwsh
+        run: cmake --build build --config Release --target ts3toolkit_package --parallel
+
+      - name: Validate package output
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem -Path build/package -Filter *.ts3_plugin -File)
+          if ($packages.Count -ne 1) {
+            throw "Expected exactly one .ts3_plugin package, found $($packages.Count)."
+          }
+          Write-Host "Package: $($packages[0].FullName)"
+
+      - name: Upload plugin package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts3toolkit-package-${{ github.sha }}
+          path: build/package/*.ts3_plugin
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish tagged release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-2022
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches project version
+        shell: pwsh
+        run: |
+          $cmake = Get-Content -Raw -Path CMakeLists.txt
+          $match = [regex]::Match(
+            $cmake,
+            'project\s*\(\s*TS3Toolkit\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)',
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+          )
+          if (-not $match.Success) {
+            throw "Could not determine the project version from CMakeLists.txt."
+          }
+          $expectedTag = "v$($match.Groups[1].Value)"
+          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version $expectedTag."
+          }
+
+      - name: Download plugin package
+        uses: actions/download-artifact@v4
+        with:
+          name: ts3toolkit-package-${{ github.sha }}
+          path: release
+
+      - name: Create or update GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $package = Get-ChildItem -Path release -Filter *.ts3_plugin -File | Select-Object -First 1
+          if ($null -eq $package) {
+            throw "The plugin package artifact was not found."
+          }
+
+          gh release view $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME $package.FullName --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME $package.FullName `
+              --repo $env:GITHUB_REPOSITORY `
+              --title "TS3Toolkit $env:GITHUB_REF_NAME" `
+              --generate-notes
+          }
