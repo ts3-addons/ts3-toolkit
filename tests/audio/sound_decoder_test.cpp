@@ -58,6 +58,39 @@ std::string tempPath(const std::string& name) {
     return (fs::temp_directory_path() / ("ts3toolkit_dec_" + name)).string();
 }
 
+// Write a WAV whose header and actual payload both contain frame_count frames.
+// The payload is filled from a reusable zero buffer so a multi-second file can
+// be written without per-sample overhead. Used to exercise the duration guard,
+// because miniaudio reports a truncated file by its real payload length.
+void writeWavFilled(const std::string& path, std::uint32_t frame_count) {
+    const std::uint32_t data_size = frame_count * 2;
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out.write("RIFF", 4);
+    putU32(out, 36 + data_size);
+    out.write("WAVE", 4);
+    out.write("fmt ", 4);
+    putU32(out, 16);
+    putU16(out, 1);
+    putU16(out, 1);
+    putU32(out, 48000);
+    putU32(out, 48000 * 2);
+    putU16(out, 2);
+    putU16(out, 16);
+    out.write("data", 4);
+    putU32(out, data_size);
+
+    constexpr std::uint32_t kChunkSamples = 65536;
+    const std::vector<std::int16_t> zeros(kChunkSamples, 0);
+    std::uint32_t remaining = frame_count;
+    while (remaining > 0) {
+        const std::uint32_t n =
+            remaining < kChunkSamples ? remaining : kChunkSamples;
+        out.write(reinterpret_cast<const char*>(zeros.data()),
+                  static_cast<std::streamsize>(n) * 2);
+        remaining -= n;
+    }
+}
+
 }  // namespace
 
 void runTests() {
@@ -87,9 +120,9 @@ void runTests() {
                invalid.status == DecodeStatus::kDecodeFailed);
     CHECK_TRUE(invalid.sound.empty());
 
-    // Header claiming more than the 30 second limit.
+    // A real file longer than the 30 second limit is rejected.
     const std::string long_path = tempPath("long.wav");
-    writeWav(long_path, samples, 48000 * 31);
+    writeWavFilled(long_path, 48000 * 31);
     DecodeResult too_long = decoder.decodeFile(long_path);
     CHECK_EQ(too_long.status, DecodeStatus::kTooLong);
 
