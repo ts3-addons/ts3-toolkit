@@ -24,6 +24,7 @@ add_executable(plugin_talk_state_test plugin/talk_state_manager_test.cpp)
 
 foreach(test_target ${TEST_TARGETS})
     target_link_libraries(${test_target} PRIVATE ts3toolkit_core)
+    target_compile_options(${test_target} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
     target_include_directories(${test_target}
         PRIVATE ${CMAKE_SOURCE_DIR}
     )

@@ -1,6 +1,7 @@
 #include "ts3toolkit/audio/sound_decoder.h"
 
 #include <miniaudio.h>
+#include <filesystem>
 
 namespace ts3toolkit::audio {
 
@@ -29,8 +30,12 @@ DecodeResult SoundDecoder::decodeFile(const std::string& path) const {
         ma_format_s16, core::kChannelCount, core::kSampleRateHz);
 
     ma_decoder decoder;
-    ma_result init_result =
-        ma_decoder_init_file(path.c_str(), &config, &decoder);
+#if defined(_WIN32)
+    ma_result init_result = ma_decoder_init_file_w(
+        std::filesystem::u8path(path).c_str(), &config, &decoder);
+#else
+    ma_result init_result = ma_decoder_init_file(path.c_str(), &config, &decoder);
+#endif
     if (init_result != MA_SUCCESS) {
         result.status = classifyInitError(init_result);
         return result;

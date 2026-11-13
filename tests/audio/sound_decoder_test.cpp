@@ -106,6 +106,12 @@ void runTests() {
         CHECK_EQ(ok.sound.samples[i], samples[i]);
     }
 
+    const fs::path unicode_path = fs::temp_directory_path() /
+        fs::u8path(u8"ts3toolkit_音效.wav");
+    fs::copy_file(wav_path, unicode_path, fs::copy_options::overwrite_existing);
+    CHECK_EQ(decoder.decodeFile(unicode_path.u8string()).status, DecodeStatus::kOk);
+    fs::remove(unicode_path);
+
     // Missing file.
     DecodeResult missing = decoder.decodeFile(tempPath("missing.wav"));
     CHECK_EQ(missing.status, DecodeStatus::kFileNotFound);
