@@ -52,6 +52,9 @@ void runTests() {
     EntranceController controller(clock, playback);
 
     ts3toolkit::config::EntranceSoundSettings settings;  // defaults
+    // A configured, non-empty file path is required to trigger per the
+    // behavior contract; the no_path case below clears it on purpose.
+    settings.sound_file = "entrance.wav";
     ts3toolkit::audio::DecodedSound sound;
     sound.samples = {1, 2, 3, 4};
 
