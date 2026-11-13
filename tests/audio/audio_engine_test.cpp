@@ -54,6 +54,12 @@ void runTests() {
     CHECK_EQ(half[0], 50);
     CHECK_EQ(half[1], 100);
 
+    // The same gain stage is used for transmitted audio and local preview.
+    engine.playSound(sound, 0.0f);
+    std::array<ts3toolkit::core::Sample, 4> muted{};
+    engine.fillFrame(muted.data(), muted.size());
+    allZero(muted);
+
     // stopSound silences subsequent frames.
     engine.stopSound();
     CHECK_EQ(engine.state(), PlaybackState::kIdle);

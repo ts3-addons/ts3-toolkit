@@ -89,7 +89,13 @@ Rules:
 
 When `local_monitor` is enabled, the plugin also plays the sound through the
 local playback device at the same time so the user can confirm it fired. This is
-a local-only convenience and does not affect the capture stream.
+a local-only convenience and does not affect the capture stream. The configured
+sound volume applies equally to the local monitor and the transmitted overlay.
+
+The settings dialog can preview the selected file locally at the volume currently
+entered in the dialog. Preview does not transmit audio or change saved settings.
+Starting another preview replaces the current one; stopping or closing the
+dialog stops playback.
 
 ## Failure modes
 

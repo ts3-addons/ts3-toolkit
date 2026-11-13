@@ -10,14 +10,62 @@
 #include <vector>
 
 #include "ts3toolkit/audio/sound_decoder.h"
+#include "ts3toolkit/audio/audio_engine.h"
 #include "ts3toolkit/config/config_store.h"
 
 namespace ts3toolkit::plugin {
 namespace {
 
+class LocalPreview {
+public:
+    ~LocalPreview() { stop(); }
+
+    bool play(const audio::DecodedSound& sound, float volume) {
+        stop();
+        engine_.playSound(sound, volume);
+        ma_device_config config = ma_device_config_init(ma_device_type_playback);
+        config.sampleRate = core::kSampleRateHz;
+        config.playback.format = ma_format_s16;
+        config.playback.channels = core::kChannelCount;
+        config.dataCallback = &LocalPreview::callback;
+        config.pUserData = this;
+        if (ma_device_init(nullptr, &config, &device_) != MA_SUCCESS) {
+            engine_.stopSound();
+            return false;
+        }
+        if (ma_device_start(&device_) != MA_SUCCESS) {
+            ma_device_uninit(&device_);
+            engine_.stopSound();
+            return false;
+        }
+        running_ = true;
+        return true;
+    }
+
+    void stop() {
+        if (running_) {
+            ma_device_uninit(&device_);
+            running_ = false;
+        }
+        engine_.stopSound();
+    }
+
+private:
+    static void callback(ma_device* device, void* output, const void*,
+                         ma_uint32 frames) {
+        auto* self = static_cast<LocalPreview*>(device->pUserData);
+        self->engine_.fillFrame(static_cast<core::Sample*>(output), frames);
+    }
+
+    audio::AudioEngine engine_{core::kFrameSamples * 10};
+    ma_device device_{};
+    bool running_ = false;
+};
+
 struct DialogState {
     config::ConfigStore store;
     config::SettingsDocument document;
+    LocalPreview preview;
 };
 
 std::wstring wide(const std::string& value) {
@@ -79,6 +127,31 @@ INT_PTR CALLBACK dialogProc(HWND dialog, UINT message, WPARAM wparam, LPARAM lpa
             if (GetOpenFileNameW(&picker)) SetDlgItemTextW(dialog, IDC_SOUND_PATH, path);
             return TRUE;
         }
+        case IDC_PREVIEW: {
+            BOOL volume_ok = FALSE;
+            const UINT volume = GetDlgItemInt(dialog, IDC_VOLUME, &volume_ok, FALSE);
+            if (!volume_ok || volume > 100) {
+                MessageBoxW(dialog, L"请输入 0 到 100 之间的音量。", L"音量无效", MB_OK | MB_ICONWARNING);
+                return TRUE;
+            }
+            const std::wstring path = text(dialog, IDC_SOUND_PATH);
+            const std::string encoded = utf8(path);
+            audio::SoundDecoder decoder;
+            const auto decoded = decoder.decodeFile(encoded);
+            if (path.empty() || encoded.empty() ||
+                !std::filesystem::path(path).is_absolute() ||
+                decoded.status != audio::DecodeStatus::kOk || decoded.sound.empty()) {
+                MessageBoxW(dialog, L"请选择有效的音频文件（最长 30 秒）。", L"音效不可用", MB_OK | MB_ICONWARNING);
+                return TRUE;
+            }
+            if (!state->preview.play(decoded.sound, static_cast<float>(volume) / 100.0f)) {
+                MessageBoxW(dialog, L"无法打开系统默认播放设备。", L"试听失败", MB_OK | MB_ICONERROR);
+            }
+            return TRUE;
+        }
+        case IDC_STOP_PREVIEW:
+            state->preview.stop();
+            return TRUE;
         case IDOK: {
             BOOL volume_ok = FALSE, delay_ok = FALSE, cooldown_ok = FALSE;
             UINT volume = GetDlgItemInt(dialog, IDC_VOLUME, &volume_ok, FALSE);

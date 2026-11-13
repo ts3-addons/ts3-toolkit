@@ -1,6 +1,6 @@
 Name = TS3Toolkit
 Type = Plugin
-Author = TS3Toolkit contributors
+Author = TheSkyC
 Version = @PROJECT_VERSION@
 Platforms = win64
-Description = Native TeamSpeak 3 toolkit. The entrance sound feature injects a custom sound into your captured voice when you join a channel, so everyone in the channel hears it. No server-side changes and no client install required for listeners.
+Description = TeamSpeak 3 toolkit with customizable channel entrance sounds.

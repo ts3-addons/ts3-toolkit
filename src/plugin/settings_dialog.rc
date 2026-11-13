@@ -2,7 +2,7 @@
 #include <windows.h>
 #include "settings_resource.h"
 
-IDD_SETTINGS DIALOGEX 0, 0, 300, 196
+IDD_SETTINGS DIALOGEX 0, 0, 300, 218
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "TS3Toolkit 设置"
 FONT 9, "Microsoft YaHei UI"
@@ -18,7 +18,10 @@ BEGIN
     LTEXT "冷却（秒，0–300）", -1, 12, 117, 110, 12
     EDITTEXT IDC_COOLDOWN, 132, 115, 45, 14, ES_NUMBER | WS_TABSTOP
     CONTROL "通过默认播放设备监听音效", IDC_MONITOR, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 138, 180, 14
-    LTEXT "保存后请重新启动 TeamSpeak。", -1, 12, 159, 180, 12
-    DEFPUSHBUTTON "保存", IDOK, 177, 177, 52, 15
-    PUSHBUTTON "取消", IDCANCEL, 236, 177, 52, 15
+    PUSHBUTTON "试听音效", IDC_PREVIEW, 12, 157, 64, 17
+    PUSHBUTTON "停止试听", IDC_STOP_PREVIEW, 82, 157, 64, 17
+    LTEXT "试听仅在本机播放，使用当前音量。", -1, 12, 182, 200, 12
+    LTEXT "保存后请重新启动 TeamSpeak。", -1, 12, 200, 160, 12
+    DEFPUSHBUTTON "保存", IDOK, 177, 198, 52, 15
+    PUSHBUTTON "取消", IDCANCEL, 236, 198, 52, 15
 END

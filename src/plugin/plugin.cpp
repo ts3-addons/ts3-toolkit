@@ -41,11 +41,11 @@ TS3_EXPORT int ts3plugin_apiVersion() {
 }
 
 TS3_EXPORT const char* ts3plugin_author() {
-    return "TS3Toolkit contributors";
+    return "TheSkyC";
 }
 
 TS3_EXPORT const char* ts3plugin_description() {
-    return "Toolkit for TeamSpeak 3. First feature: personal entrance sound.";
+    return "TeamSpeak 3 toolkit with customizable channel entrance sounds.";
 }
 
 TS3_EXPORT void ts3plugin_setFunctionPointers(
