@@ -53,7 +53,7 @@ DecodeResult SoundDecoder::decodeFile(const std::string& path) const {
     result.sound.samples.resize(static_cast<std::size_t>(total_frames));
     ma_uint64 frames_read = 0;
     ma_result read_result =
-        ma_decoder_read_pcm_frames(decoder, result.sound.samples.data(),
+        ma_decoder_read_pcm_frames(&decoder, result.sound.samples.data(),
                                    total_frames, &frames_read);
     ma_decoder_uninit(&decoder);
 
