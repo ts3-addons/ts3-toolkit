@@ -16,6 +16,8 @@ PluginRuntime::PluginRuntime(ClientApi& client)
       sound_decoder_(),
       prepared_sound_(),
       custom_device_(client_, audio_engine_, kDeviceId, kDeviceDisplayName),
+      talk_state_(client_),
+      transmission_forced_(false),
       config_store_(nullptr),
       settings_doc_(),
       data_directory_(),
@@ -55,8 +57,12 @@ bool PluginRuntime::initialize() {
     // Decode before scheduling so the pump never performs file I/O.
     reloadSound(settings_doc_.entrance_sound);
 
-    // Advance the controller on the pump's fixed cadence.
-    custom_device_.setFrameHook([this] { controller_.poll(); });
+    // Advance the controller on the pump's fixed cadence and keep the
+    // transmission gating aligned with overlay playback.
+    custom_device_.setFrameHook([this] {
+        controller_.poll();
+        syncTransmission();
+    });
 
     if (!custom_device_.start()) {
         client_.log("failed to start custom capture device",
@@ -73,6 +79,12 @@ void PluginRuntime::shutdown() {
         return;
     }
 
+    // Restore the user's original talk state before tearing the device down.
+    if (transmission_forced_) {
+        talk_state_.endForced(client_.currentConnectionId());
+        transmission_forced_ = false;
+    }
+
     custom_device_.stop();
     playback_adapter_.stopOverlay();
     config_store_.reset();
@@ -80,6 +92,21 @@ void PluginRuntime::shutdown() {
     data_directory_.clear();
 
     initialized_ = false;
+}
+
+void PluginRuntime::syncTransmission() {
+    const bool playing = playback_adapter_.isOverlayPlaying();
+    const uint64_t connection_id = client_.currentConnectionId();
+
+    if (playing && !transmission_forced_) {
+        if (talk_state_.beginForced(connection_id)) {
+            transmission_forced_ = true;
+        }
+    } else if (!playing && transmission_forced_) {
+        if (talk_state_.endForced(connection_id)) {
+            transmission_forced_ = false;
+        }
+    }
 }
 
 void PluginRuntime::onClientMove(uint64_t connection_id, uint16_t client_id,

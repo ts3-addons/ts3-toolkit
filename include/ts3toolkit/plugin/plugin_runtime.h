@@ -8,6 +8,7 @@
 #include "ts3toolkit/plugin/audio_playback_adapter.h"
 #include "ts3toolkit/plugin/client_api.h"
 #include "ts3toolkit/plugin/custom_capture_device.h"
+#include "ts3toolkit/plugin/talk_state_manager.h"
 #include "ts3toolkit/platform/system_clock.h"
 
 #include <cstdint>
@@ -40,6 +41,11 @@ private:
     void reloadSound(const config::EntranceSoundSettings& settings);
     std::string resolveSoundPath(const std::string& configured) const;
 
+    // Keep the client's transmission gating aligned with overlay playback:
+    // force continuous transmission while the sound is playing and restore the
+    // user's prior talk state afterwards.
+    void syncTransmission();
+
     static constexpr const char* kDeviceId = "ts3toolkit_capture";
     static constexpr const char* kDeviceDisplayName = "TS3Toolkit Virtual Capture";
     static constexpr std::size_t kCaptureRingCapacity =
@@ -54,6 +60,8 @@ private:
     audio::SoundDecoder sound_decoder_;
     audio::DecodedSound prepared_sound_;
     CustomCaptureDevice custom_device_;
+    TalkStateManager talk_state_;
+    bool transmission_forced_;
 
     std::unique_ptr<config::ConfigStore> config_store_;
     config::SettingsDocument settings_doc_;

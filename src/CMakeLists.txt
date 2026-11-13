@@ -25,6 +25,7 @@ add_library(ts3toolkit_plugin STATIC
     plugin/audio_playback_adapter.cpp
     plugin/custom_capture_device.cpp
     plugin/plugin_runtime.cpp
+    plugin/talk_state_manager.cpp
 )
 
 target_link_libraries(ts3toolkit_plugin PUBLIC ts3toolkit_core)
