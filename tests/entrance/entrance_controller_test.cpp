@@ -89,6 +89,13 @@ void runTests() {
     cancelled.poll();
     CHECK_EQ(cancel_playback.start_count, 0);
     settings.enabled = true;
+    cancelled.updateSettings(settings, &sound);
+    cancelled.onLocalClientEnteredChannel();
+    cancelled.cancelPending();
+    delay_clock.advance(1500);
+    cancelled.poll();
+    CHECK_EQ(cancel_playback.start_count, 0);
+    settings.enabled = true;
     settings.delay_ms = 0;
     CHECK_EQ(playback.start_count, 0);
 

@@ -42,6 +42,7 @@ public:
     // Invoked after the caller confirms the event is the local client moving
     // into a valid, non-zero destination channel.
     void onLocalClientEnteredChannel();
+    void cancelPending();
 
     // Advance playing/cooldown transitions using the injected clock.
     void poll();

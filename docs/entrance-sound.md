@@ -42,6 +42,7 @@ Idle --(valid enter event)--> Pending --> Playing --(sound exhausted)--> Cooldow
 
 - **Idle**: waiting for a valid enter event.
 - **Pending**: waiting for the configured delay; repeated entries are ignored.
+  Leaving or disconnecting cancels the pending sound.
 - **Playing**: decoded sound frames are being mixed into the pump output.
 - **Cooldown**: new enter events are ignored until the cooldown window elapses.
 

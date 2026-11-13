@@ -80,6 +80,12 @@ void EntranceController::poll() {
     }
 }
 
+void EntranceController::cancelPending() {
+    if (state_ == ControllerState::kPending) {
+        state_ = ControllerState::kIdle;
+    }
+}
+
 ControllerState EntranceController::state() const {
     return state_;
 }
