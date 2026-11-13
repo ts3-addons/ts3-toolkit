@@ -69,6 +69,9 @@ void runTests() {
     writeRaw(path, "schema_version = 2\n[entrance_sound]\ndelay_ms = 30001\n");
     CHECK_EQ(store.load().status, LoadStatus::kRejected);
 
+    writeRaw(path, "schema_version = 2\n[entrance_sound]\ndelay_ms = 999999999999999999999\n");
+    CHECK_EQ(store.load().status, LoadStatus::kRejected);
+
     // Corrupt content is rejected, not partially applied.
     writeRaw(path, "this is not valid config\n");
     LoadOutcome third = store.load();

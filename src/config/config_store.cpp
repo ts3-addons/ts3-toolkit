@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <fstream>
+#include <limits>
 #include <sstream>
 
 #include <filesystem>
@@ -41,7 +42,7 @@ bool parseBool(const std::string& raw, bool& output) {
 bool parseInt(const std::string& raw, int& output) {
     std::size_t pos = 0;
     bool has_digit = false;
-    int value = 0;
+    unsigned int value = 0;
     int sign = 1;
     if (pos < raw.size() && (raw[pos] == '+' || raw[pos] == '-')) {
         if (raw[pos] == '-') {
@@ -52,13 +53,24 @@ bool parseInt(const std::string& raw, int& output) {
     while (pos < raw.size() &&
            std::isdigit(static_cast<unsigned char>(raw[pos]))) {
         has_digit = true;
-        value = value * 10 + (raw[pos] - '0');
+        const unsigned int digit = static_cast<unsigned int>(raw[pos] - '0');
+        const unsigned int limit = sign < 0
+            ? static_cast<unsigned int>((std::numeric_limits<int>::max)()) + 1u
+            : static_cast<unsigned int>((std::numeric_limits<int>::max)());
+        if (value > (limit - digit) / 10u) {
+            return false;
+        }
+        value = value * 10u + digit;
         ++pos;
     }
     if (!has_digit || pos != raw.size()) {
         return false;
     }
-    output = value * sign;
+    if (sign < 0 && value == static_cast<unsigned int>((std::numeric_limits<int>::max)()) + 1u) {
+        output = (std::numeric_limits<int>::min)();
+    } else {
+        output = static_cast<int>(value) * sign;
+    }
     return true;
 }
 
