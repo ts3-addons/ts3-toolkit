@@ -18,6 +18,12 @@ pump mixes the hardware microphone with a decoded entrance sound and pushes the
 combined 48 kHz mono PCM into the client through the official plugin API. The
 client then encodes and transmits it as ordinary voice.
 
+Open the plugin's settings from TeamSpeak's plugin manager to choose an audio
+file, adjust volume, delay and cooldown, and enable or disable the sound. Restart
+TeamSpeak after saving. Select the virtual device for capture and your actual
+headphones for playback. Local monitoring uses the Windows default output and
+plays only the entrance sound, not the microphone.
+
 See the documents under `docs/` for the detailed design and contracts.
 
 ## Architecture

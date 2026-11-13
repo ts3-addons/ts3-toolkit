@@ -6,8 +6,10 @@
 #include <string>
 
 #include "ts3_functions.h"
+#include "plugin_definitions.h"
 #include "ts3toolkit/plugin/plugin_runtime.h"
 #include "ts3_client_api.h"
+#include "settings_dialog.h"
 
 #if defined(_WIN32)
 #define TS3_EXPORT extern "C" __declspec(dllexport)
@@ -55,6 +57,18 @@ TS3_EXPORT int ts3plugin_init() {
     // The plugin ID is supplied only after init via registerPluginID, so the
     // runtime is assembled there. No blocking work is required here.
     return 0;
+}
+
+TS3_EXPORT int ts3plugin_offersConfigure() {
+    return PLUGIN_OFFERS_CONFIGURE_QT_THREAD;
+}
+
+TS3_EXPORT void ts3plugin_configure(void* handle, void* parent) {
+    (void)handle;
+    (void)parent;
+    if (g_client) {
+        ts3toolkit::plugin::showSettingsDialog(nullptr, g_client->configPath());
+    }
 }
 
 TS3_EXPORT void ts3plugin_shutdown() {

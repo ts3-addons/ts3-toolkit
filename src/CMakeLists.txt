@@ -35,6 +35,8 @@ target_link_libraries(ts3toolkit_plugin PUBLIC ts3toolkit_core)
 add_library(ts3toolkit SHARED
     plugin/plugin.cpp
     plugin/ts3_client_api.cpp
+    plugin/settings_dialog.cpp
+    plugin/settings_dialog.rc
 )
 
 target_include_directories(ts3toolkit PRIVATE
@@ -42,6 +44,8 @@ target_include_directories(ts3toolkit PRIVATE
 )
 
 target_link_libraries(ts3toolkit PRIVATE ts3toolkit_plugin)
+target_link_libraries(ts3toolkit PRIVATE comdlg32)
+target_compile_options(ts3toolkit PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
 set_target_properties(ts3toolkit PROPERTIES
     OUTPUT_NAME ts3toolkit
