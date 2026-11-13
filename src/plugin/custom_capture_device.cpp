@@ -76,6 +76,9 @@ void CustomCaptureDevice::setFailureHook(std::function<void()> hook) {
 
 void CustomCaptureDevice::pumpOnce() {
     engine_.fillFrame(frame_buffer_.data(), frame_buffer_.size());
+    if (stop_requested_.load(std::memory_order_acquire)) {
+        return;
+    }
     if (!client_.pushCaptureFrames(device_id_, frame_buffer_.data(),
                                    static_cast<int>(frame_buffer_.size()))) {
         // Fail closed: stop the pump on a client error rather than spinning on
@@ -96,6 +99,9 @@ void CustomCaptureDevice::runLoop() {
     while (!stop_requested_.load()) {
         if (frame_hook_) {
             frame_hook_();
+        }
+        if (stop_requested_.load(std::memory_order_acquire)) {
+            break;
         }
         pumpOnce();
 

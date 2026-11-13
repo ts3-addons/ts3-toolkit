@@ -60,6 +60,11 @@ bool TalkStateManager::endForced(uint64_t /*connection_id*/) {
     return vad_restored && input_restored && flushed;
 }
 
+void TalkStateManager::discardForced() {
+    forcing_ = false;
+    saved_connection_id_ = 0;
+}
+
 bool TalkStateManager::isForcing() const {
     return forcing_;
 }

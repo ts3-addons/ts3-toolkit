@@ -88,6 +88,10 @@ thread never allocates memory or waits on unbounded locks.
   status; errors are reported once with a short, bounded log message.
 - Resource lifetimes are explicit: every started device, allocated buffer, or
   registered custom device has a matching stop/free/unregister on shutdown.
+- Plugin runtime and client ownership is released from `ts3plugin_shutdown`.
+  Process exit must not implicitly run their destructors from DLL detach, where
+  waiting for the audio thread or calling client APIs is unsafe. The operating
+  system reclaims those resources when the process exits without that callback.
 
 ## Resource bounds
 

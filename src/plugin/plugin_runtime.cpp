@@ -69,6 +69,9 @@ bool PluginRuntime::initialize() {
     // Advance the controller on the pump's fixed cadence and keep the
     // transmission gating aligned with overlay playback.
     custom_device_.setFrameHook([this] {
+        if (!connection_active_.load(std::memory_order_acquire)) {
+            return;
+        }
         {
             std::unique_lock<std::mutex> lock(controller_mutex_, std::try_to_lock);
             if (lock.owns_lock()) {
@@ -84,7 +87,7 @@ bool PluginRuntime::initialize() {
     custom_device_.setFailureHook([this] {
         std::lock_guard<std::mutex> lock(controller_mutex_);
         if (transmission_forced_) {
-            talk_state_.endForced(controller_connection_id_);
+            talk_state_.discardForced();
             transmission_forced_ = false;
         }
     });
@@ -105,14 +108,17 @@ void PluginRuntime::shutdown() {
         return;
     }
 
+    const bool was_connection_active =
+        connection_active_.exchange(false, std::memory_order_acq_rel);
     custom_device_.stop();
     audio_engine_.stopMonitor();
 
     // Restore the user's original talk state after the pump has stopped.
-    if (transmission_forced_) {
+    if (transmission_forced_ && was_connection_active) {
         talk_state_.endForced(client_.currentConnectionId());
         transmission_forced_ = false;
     }
+    talk_state_.discardForced();
 
     playback_adapter_.stopOverlay();
     config_store_.reset();
@@ -189,6 +195,18 @@ void PluginRuntime::onConnectionEstablished(uint64_t connection_id) {
         return;
     }
 
+    connection_active_.store(true, std::memory_order_release);
+    if (!custom_device_.running()) {
+        if (settings_doc_.entrance_sound.local_monitor && !audio_engine_.startMonitor()) {
+            client_.log("local audio monitor failed to start", LogSeverity::kWarning);
+        }
+        if (!custom_device_.start()) {
+            connection_active_.store(false, std::memory_order_release);
+            client_.log("failed to restart custom capture device", LogSeverity::kError);
+            return;
+        }
+    }
+
     std::lock_guard<std::mutex> lock(controller_mutex_);
     controller_.cancelPending();
     if (controller_.state() == entrance::ControllerState::kIdle) {
@@ -198,8 +216,14 @@ void PluginRuntime::onConnectionEstablished(uint64_t connection_id) {
 }
 
 void PluginRuntime::onConnectionDisconnected(uint64_t connection_id) {
+    connection_active_.store(false, std::memory_order_release);
     std::lock_guard<std::mutex> lock(controller_mutex_);
     if (controller_connection_id_ == connection_id) controller_.cancelPending();
+    custom_device_.stop();
+    audio_engine_.stopMonitor();
+    playback_adapter_.stopOverlay();
+    talk_state_.discardForced();
+    transmission_forced_ = false;
 }
 
 void PluginRuntime::reloadSound(

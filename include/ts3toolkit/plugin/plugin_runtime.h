@@ -12,6 +12,7 @@
 #include "ts3toolkit/platform/system_clock.h"
 
 #include <cstdint>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -72,6 +73,7 @@ private:
     config::SettingsDocument settings_doc_;
     std::string data_directory_;
     bool initialized_;
+    std::atomic<bool> connection_active_{false};
 };
 
 }  // namespace ts3toolkit::plugin

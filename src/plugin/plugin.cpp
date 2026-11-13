@@ -4,12 +4,14 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 
 #include "ts3_functions.h"
 #include "plugin_definitions.h"
 #include "ts3toolkit/plugin/plugin_runtime.h"
 #include "ts3_client_api.h"
 #include "settings_dialog.h"
+#include "plugin_lifetime.h"
 
 #if defined(_WIN32)
 #define TS3_EXPORT extern "C" __declspec(dllexport)
@@ -23,8 +25,9 @@ constexpr int kPluginApiVersion = 26;
 
 TS3Functions g_functions;
 std::string g_plugin_id;
-std::unique_ptr<ts3toolkit::plugin::Ts3ClientApi> g_client;
-std::unique_ptr<ts3toolkit::plugin::PluginRuntime> g_runtime;
+ts3toolkit::plugin::PluginLifetime<ts3toolkit::plugin::Ts3ClientApi,
+                                  ts3toolkit::plugin::PluginRuntime> g_plugin;
+static_assert(std::is_trivially_destructible_v<decltype(g_plugin)>);
 
 }  // namespace
 
@@ -66,30 +69,30 @@ TS3_EXPORT int ts3plugin_offersConfigure() {
 TS3_EXPORT void ts3plugin_configure(void* handle, void* parent) {
     (void)handle;
     (void)parent;
-    if (g_client) {
-        ts3toolkit::plugin::showSettingsDialog(nullptr, g_client->configPath());
+    if (g_plugin.client) {
+        ts3toolkit::plugin::showSettingsDialog(nullptr, g_plugin.client->configPath());
     }
 }
 
 TS3_EXPORT void ts3plugin_shutdown() {
-    g_runtime.reset();
-    g_client.reset();
+    g_plugin.shutdown();
     g_plugin_id.clear();
 }
 
 TS3_EXPORT void ts3plugin_registerPluginID(const char* id) {
+    g_plugin.shutdown();
     if (id != nullptr) {
         g_plugin_id.assign(id);
     }
-    g_client = std::make_unique<ts3toolkit::plugin::Ts3ClientApi>(
-        g_functions, g_plugin_id);
-    g_runtime =
-        std::make_unique<ts3toolkit::plugin::PluginRuntime>(*g_client);
+    auto client = std::make_unique<ts3toolkit::plugin::Ts3ClientApi>(g_functions, g_plugin_id);
+    auto runtime = std::make_unique<ts3toolkit::plugin::PluginRuntime>(*client);
+    g_plugin.client = client.release();
+    g_plugin.runtime = runtime.release();
 
-    if (!g_runtime->initialize()) {
+    if (!g_plugin.runtime->initialize()) {
         // Fail closed: drop the half-initialized runtime but stay loaded so
         // the client does not treat the microphone path as broken.
-        g_runtime.reset();
+        g_plugin.resetRuntime();
     }
 }
 
@@ -100,8 +103,8 @@ TS3_EXPORT void ts3plugin_onClientMoveEvent(
     (void)old_channel_id;
     (void)visibility;
     (void)move_message;
-    if (g_runtime) {
-        g_runtime->onClientMove(server_connection_handler_id, client_id,
+    if (g_plugin.runtime) {
+        g_plugin.runtime->onClientMove(server_connection_handler_id, client_id,
                                 new_channel_id);
     }
 }
@@ -117,8 +120,8 @@ TS3_EXPORT void ts3plugin_onClientMoveMovedEvent(
     (void)mover_name;
     (void)mover_unique_id;
     (void)move_message;
-    if (g_runtime) {
-        g_runtime->onClientMove(server_connection_handler_id, client_id,
+    if (g_plugin.runtime) {
+        g_plugin.runtime->onClientMove(server_connection_handler_id, client_id,
                                 new_channel_id);
     }
 }
@@ -127,9 +130,9 @@ TS3_EXPORT void ts3plugin_onConnectStatusChangeEvent(
     uint64 server_connection_handler_id, int new_status,
     unsigned int error_number) {
     (void)error_number;
-    if (g_runtime && new_status == STATUS_CONNECTION_ESTABLISHED) {
-        g_runtime->onConnectionEstablished(server_connection_handler_id);
-    } else if (g_runtime && new_status == STATUS_DISCONNECTED) {
-        g_runtime->onConnectionDisconnected(server_connection_handler_id);
+    if (g_plugin.runtime && new_status == STATUS_CONNECTION_ESTABLISHED) {
+        g_plugin.runtime->onConnectionEstablished(server_connection_handler_id);
+    } else if (g_plugin.runtime && new_status == STATUS_DISCONNECTED) {
+        g_plugin.runtime->onConnectionDisconnected(server_connection_handler_id);
     }
 }

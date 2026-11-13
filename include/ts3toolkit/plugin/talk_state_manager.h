@@ -27,6 +27,9 @@ public:
     // when not forcing (returns false and changes nothing).
     bool endForced(uint64_t connection_id);
 
+    // Clear saved state without calling the client after a connection teardown.
+    void discardForced();
+
     bool isForcing() const;
 
 private:
