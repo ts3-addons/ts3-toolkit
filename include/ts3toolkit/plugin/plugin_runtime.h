@@ -36,6 +36,7 @@ public:
     void onClientMove(uint64_t connection_id, uint16_t client_id,
                       uint64_t new_channel_id);
     void onConnectionEstablished(uint64_t connection_id);
+    void onConnectionDisconnected(uint64_t connection_id);
 
 private:
     // (Re)decode the configured sound and refresh the controller wiring.
@@ -60,6 +61,7 @@ private:
     AudioPlaybackAdapter playback_adapter_;
     entrance::EntranceController controller_;
     std::mutex controller_mutex_;
+    uint64_t controller_connection_id_ = 0;
     audio::SoundDecoder sound_decoder_;
     audio::DecodedSound prepared_sound_;
     CustomCaptureDevice custom_device_;

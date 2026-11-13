@@ -129,5 +129,7 @@ TS3_EXPORT void ts3plugin_onConnectStatusChangeEvent(
     (void)error_number;
     if (g_runtime && new_status == STATUS_CONNECTION_ESTABLISHED) {
         g_runtime->onConnectionEstablished(server_connection_handler_id);
+    } else if (g_runtime && new_status == STATUS_DISCONNECTED) {
+        g_runtime->onConnectionDisconnected(server_connection_handler_id);
     }
 }

@@ -70,13 +70,21 @@ void CustomCaptureDevice::setFrameHook(std::function<void()> hook) {
     frame_hook_ = std::move(hook);
 }
 
+void CustomCaptureDevice::setFailureHook(std::function<void()> hook) {
+    failure_hook_ = std::move(hook);
+}
+
 void CustomCaptureDevice::pumpOnce() {
     engine_.fillFrame(frame_buffer_.data(), frame_buffer_.size());
     if (!client_.pushCaptureFrames(device_id_, frame_buffer_.data(),
                                    static_cast<int>(frame_buffer_.size()))) {
         // Fail closed: stop the pump on a client error rather than spinning on
         // repeated failures. The microphone remains usable for reconnection.
-        stop_requested_.store(true);
+        if (!stop_requested_.exchange(true)) {
+            client_.log("custom capture pump stopped after a client error",
+                        LogSeverity::kError);
+            if (failure_hook_) failure_hook_();
+        }
     }
 }
 

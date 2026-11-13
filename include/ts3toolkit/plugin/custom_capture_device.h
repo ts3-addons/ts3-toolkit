@@ -38,6 +38,7 @@ public:
     // Optional hook invoked at the start of every pump iteration. Used by the
     // runtime to advance the feature controller on the same fixed cadence.
     void setFrameHook(std::function<void()> hook);
+    void setFailureHook(std::function<void()> hook);
 
 private:
     void runLoop();
@@ -57,6 +58,7 @@ private:
     std::condition_variable wait_cv_;
 
     std::function<void()> frame_hook_;
+    std::function<void()> failure_hook_;
 };
 
 }  // namespace ts3toolkit::plugin

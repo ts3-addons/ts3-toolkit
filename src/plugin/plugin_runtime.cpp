@@ -72,10 +72,21 @@ bool PluginRuntime::initialize() {
         {
             std::unique_lock<std::mutex> lock(controller_mutex_, std::try_to_lock);
             if (lock.owns_lock()) {
+                if (controller_.state() == entrance::ControllerState::kPending &&
+                    client_.currentConnectionId() != controller_connection_id_) {
+                    controller_.cancelPending();
+                }
                 controller_.poll();
+                syncTransmission();
             }
         }
-        syncTransmission();
+    });
+    custom_device_.setFailureHook([this] {
+        std::lock_guard<std::mutex> lock(controller_mutex_);
+        if (transmission_forced_) {
+            talk_state_.endForced(controller_connection_id_);
+            transmission_forced_ = false;
+        }
     });
 
     if (!custom_device_.start()) {
@@ -113,7 +124,7 @@ void PluginRuntime::shutdown() {
 
 void PluginRuntime::syncTransmission() {
     const bool playing = playback_adapter_.isOverlayPlaying();
-    const uint64_t connection_id = client_.currentConnectionId();
+    const uint64_t connection_id = controller_connection_id_;
 
     if (playing && !transmission_forced_) {
         if (talk_state_.beginForced(connection_id)) {
@@ -144,8 +155,16 @@ void PluginRuntime::onClientMove(uint64_t connection_id, uint16_t client_id,
         return;  // Disconnects and leaves never trigger.
     }
 
+    if (client_.currentConnectionId() != connection_id) {
+        return;
+    }
+
     // Enabled/configured/cooldown checks are owned by the controller.
     std::lock_guard<std::mutex> lock(controller_mutex_);
+    controller_.cancelPending();
+    if (controller_.state() == entrance::ControllerState::kIdle) {
+        controller_connection_id_ = connection_id;
+    }
     controller_.onLocalClientEnteredChannel();
 }
 
@@ -166,8 +185,21 @@ void PluginRuntime::onConnectionEstablished(uint64_t connection_id) {
         return;
     }
 
+    if (client_.currentConnectionId() != connection_id) {
+        return;
+    }
+
     std::lock_guard<std::mutex> lock(controller_mutex_);
+    controller_.cancelPending();
+    if (controller_.state() == entrance::ControllerState::kIdle) {
+        controller_connection_id_ = connection_id;
+    }
     controller_.onLocalClientEnteredChannel();
+}
+
+void PluginRuntime::onConnectionDisconnected(uint64_t connection_id) {
+    std::lock_guard<std::mutex> lock(controller_mutex_);
+    if (controller_connection_id_ == connection_id) controller_.cancelPending();
 }
 
 void PluginRuntime::reloadSound(
@@ -195,7 +227,12 @@ void PluginRuntime::reloadSound(
 
 std::string PluginRuntime::resolveSoundPath(
     const std::string& configured) const {
-    const fs::path configured_path = fs::u8path(configured);
+    fs::path configured_path;
+    try {
+        configured_path = fs::u8path(configured);
+    } catch (const std::exception&) {
+        return {};
+    }
     if (configured_path.is_absolute()) {
         return configured;
     }

@@ -20,6 +20,7 @@ public:
     bool fail_set_input = false;
     bool fail_flush = false;
     bool fail_registration = false;
+    bool fail_push = false;
     int registration_count = 0;
     uint64_t last_input_connection = 0;
     std::string plugin_path = "plugin";
@@ -34,7 +35,7 @@ public:
     }
     bool pushCaptureFrames(const std::string&, const core::Sample*,
                            int) override {
-        return true;
+        return !fail_push;
     }
 
     bool getLocalClientId(uint64_t, uint16_t&) override {
@@ -105,6 +106,16 @@ void runTests() {
     plugin::PluginRuntime runtime(path_unavailable);
     CHECK_TRUE(!runtime.initialize());
     CHECK_EQ(path_unavailable.registration_count, 1);
+
+    FakeClientApi failed_pump;
+    failed_pump.fail_push = true;
+    audio::AudioEngine engine(64);
+    plugin::CustomCaptureDevice device(failed_pump, engine, "id", "device");
+    int failures = 0;
+    device.setFailureHook([&failures] { ++failures; });
+    device.pumpOnce();
+    device.pumpOnce();
+    CHECK_EQ(failures, 1);
 
     constexpr uint64_t kConnection = 1;
 
