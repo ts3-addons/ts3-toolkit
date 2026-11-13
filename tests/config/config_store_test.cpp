@@ -56,6 +56,10 @@ void runTests() {
     CHECK_EQ(second.document.entrance_sound.local_monitor, true);
     CHECK_EQ(second.document.entrance_sound.delay_ms, 1250);
 
+    document.entrance_sound.delay_ms = 2300;
+    CHECK_TRUE(store.save(document));
+    CHECK_EQ(store.load().document.entrance_sound.delay_ms, 2300);
+
     writeRaw(path, "schema_version = 1\n[entrance_sound]\nvolume = 0.5\n");
     LoadOutcome migrated = store.load();
     CHECK_EQ(migrated.status, LoadStatus::kLoaded);
