@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #include <commdlg.h>
+#include <commctrl.h>
 
 #include <cmath>
 #include <filesystem>
@@ -49,6 +50,8 @@ public:
         }
         engine_.stopSound();
     }
+
+    bool playing() const { return running_ && engine_.state() == audio::PlaybackState::kPlaying; }
 
 private:
     static void callback(ma_device* device, void* output, const void*,
@@ -99,6 +102,14 @@ std::wstring text(HWND dialog, int id) {
     return buffer.data();
 }
 
+void updateControls(HWND dialog, DialogState& state) {
+    const bool enabled = IsDlgButtonChecked(dialog, IDC_ENABLED) == BST_CHECKED;
+    const int controls[] = {IDC_SOUND_PATH, IDC_BROWSE, IDC_PREVIEW, IDC_VOLUME_SLIDER,
+                            IDC_VOLUME, IDC_DELAY, IDC_COOLDOWN, IDC_MONITOR};
+    for (int id : controls) EnableWindow(GetDlgItem(dialog, id), enabled);
+    EnableWindow(GetDlgItem(dialog, IDC_STOP_PREVIEW), enabled && state.preview.playing());
+}
+
 INT_PTR CALLBACK dialogProc(HWND dialog, UINT message, WPARAM wparam, LPARAM lparam) {
     auto* state = reinterpret_cast<DialogState*>(GetWindowLongPtrW(dialog, DWLP_USER));
     if (message == WM_INITDIALOG) {
@@ -111,10 +122,44 @@ INT_PTR CALLBACK dialogProc(HWND dialog, UINT message, WPARAM wparam, LPARAM lpa
         SetDlgItemInt(dialog, IDC_VOLUME, static_cast<UINT>(std::lround(sound.volume * 100)), FALSE);
         SetDlgItemInt(dialog, IDC_DELAY, sound.delay_ms, FALSE);
         SetDlgItemInt(dialog, IDC_COOLDOWN, sound.cooldown_seconds, FALSE);
+        SendDlgItemMessageW(dialog, IDC_VOLUME_SLIDER, TBM_SETRANGE, TRUE, MAKELONG(0, 100));
+        SendDlgItemMessageW(dialog, IDC_VOLUME_SLIDER, TBM_SETPOS, TRUE,
+                            static_cast<LPARAM>(std::lround(sound.volume * 100)));
+        updateControls(dialog, *state);
+        return TRUE;
+    }
+    if (state && message == WM_HSCROLL && reinterpret_cast<HWND>(lparam) ==
+                                              GetDlgItem(dialog, IDC_VOLUME_SLIDER)) {
+        const auto volume = SendDlgItemMessageW(dialog, IDC_VOLUME_SLIDER, TBM_GETPOS, 0, 0);
+        SetDlgItemInt(dialog, IDC_VOLUME, static_cast<UINT>(volume), FALSE);
+        return TRUE;
+    }
+    if (state && message == WM_TIMER && wparam == 1) {
+        if (!state->preview.playing()) {
+            KillTimer(dialog, 1);
+            state->preview.stop();
+            updateControls(dialog, *state);
+        }
         return TRUE;
     }
     if (message != WM_COMMAND || !state) return FALSE;
     switch (LOWORD(wparam)) {
+        case IDC_ENABLED:
+            if (IsDlgButtonChecked(dialog, IDC_ENABLED) != BST_CHECKED) {
+                KillTimer(dialog, 1);
+                state->preview.stop();
+            }
+            updateControls(dialog, *state);
+            return TRUE;
+        case IDC_VOLUME:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                BOOL valid = FALSE;
+                const UINT volume = GetDlgItemInt(dialog, IDC_VOLUME, &valid, FALSE);
+                if (valid && volume <= 100) {
+                    SendDlgItemMessageW(dialog, IDC_VOLUME_SLIDER, TBM_SETPOS, TRUE, volume);
+                }
+            }
+            return TRUE;
         case IDC_BROWSE: {
             wchar_t path[32768] = {};
             OPENFILENAMEW picker{};
@@ -147,10 +192,14 @@ INT_PTR CALLBACK dialogProc(HWND dialog, UINT message, WPARAM wparam, LPARAM lpa
             if (!state->preview.play(decoded.sound, static_cast<float>(volume) / 100.0f)) {
                 MessageBoxW(dialog, L"无法打开系统默认播放设备。", L"试听失败", MB_OK | MB_ICONERROR);
             }
+            if (state->preview.playing()) SetTimer(dialog, 1, 100, nullptr);
+            updateControls(dialog, *state);
             return TRUE;
         }
         case IDC_STOP_PREVIEW:
+            KillTimer(dialog, 1);
             state->preview.stop();
+            updateControls(dialog, *state);
             return TRUE;
         case IDOK: {
             BOOL volume_ok = FALSE, delay_ok = FALSE, cooldown_ok = FALSE;
@@ -159,7 +208,14 @@ INT_PTR CALLBACK dialogProc(HWND dialog, UINT message, WPARAM wparam, LPARAM lpa
             UINT cooldown = GetDlgItemInt(dialog, IDC_COOLDOWN, &cooldown_ok, FALSE);
             if (!volume_ok || volume > 100 || !delay_ok || delay > 30000 ||
                 !cooldown_ok || cooldown > 300) {
-                MessageBoxW(dialog, L"请检查音量、延迟和冷却时间的范围。", L"设置无效", MB_OK | MB_ICONWARNING);
+                const bool invalid_volume = !volume_ok || volume > 100;
+                const bool invalid_delay = !delay_ok || delay > 30000;
+                const int field = invalid_volume ? IDC_VOLUME : invalid_delay ? IDC_DELAY : IDC_COOLDOWN;
+                const wchar_t* message = invalid_volume ? L"请输入 0 到 100 之间的音量。" :
+                    invalid_delay ? L"请输入 0 到 30000 毫秒之间的播放延迟。" :
+                                    L"请输入 0 到 300 秒之间的冷却时间。";
+                MessageBoxW(dialog, message, L"设置无效", MB_OK | MB_ICONWARNING);
+                SetFocus(GetDlgItem(dialog, field));
                 return TRUE;
             }
             const std::wstring path = text(dialog, IDC_SOUND_PATH);
@@ -198,6 +254,8 @@ INT_PTR CALLBACK dialogProc(HWND dialog, UINT message, WPARAM wparam, LPARAM lpa
 
 void showSettingsDialog(void* parent, const std::string& config_directory) {
     if (config_directory.empty()) return;
+    INITCOMMONCONTROLSEX controls{sizeof(controls), ICC_BAR_CLASSES};
+    InitCommonControlsEx(&controls);
     DialogState state{config::ConfigStore((std::filesystem::path(config_directory) / "ts3toolkit.ini").string()), {}};
     auto loaded = state.store.load();
     if (loaded.status == config::LoadStatus::kRejected) {

@@ -97,6 +97,11 @@ entered in the dialog. Preview does not transmit audio or change saved settings.
 Starting another preview replaces the current one; stopping or closing the
 dialog stops playback.
 
+The settings dialog groups file selection and local preview together. The
+volume slider and numeric field represent the same percentage. Disabling the
+feature retains its settings and disables the related controls until it is
+enabled again. The stop button is available while a preview is playing.
+
 ## Failure modes
 
 | Failure | Behavior |

@@ -44,7 +44,7 @@ target_include_directories(ts3toolkit PRIVATE
 )
 
 target_link_libraries(ts3toolkit PRIVATE ts3toolkit_plugin)
-target_link_libraries(ts3toolkit PRIVATE comdlg32)
+target_link_libraries(ts3toolkit PRIVATE comdlg32 comctl32)
 target_compile_options(ts3toolkit PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
 set_target_properties(ts3toolkit PROPERTIES
