@@ -65,7 +65,12 @@ bool PluginRuntime::initialize() {
     // Advance the controller on the pump's fixed cadence and keep the
     // transmission gating aligned with overlay playback.
     custom_device_.setFrameHook([this] {
-        controller_.poll();
+        {
+            std::unique_lock<std::mutex> lock(controller_mutex_, std::try_to_lock);
+            if (lock.owns_lock()) {
+                controller_.poll();
+            }
+        }
         syncTransmission();
     });
 
@@ -84,13 +89,14 @@ void PluginRuntime::shutdown() {
         return;
     }
 
-    // Restore the user's original talk state before tearing the device down.
+    custom_device_.stop();
+
+    // Restore the user's original talk state after the pump has stopped.
     if (transmission_forced_) {
         talk_state_.endForced(client_.currentConnectionId());
         transmission_forced_ = false;
     }
 
-    custom_device_.stop();
     playback_adapter_.stopOverlay();
     config_store_.reset();
     prepared_sound_.samples.clear();
@@ -108,9 +114,8 @@ void PluginRuntime::syncTransmission() {
             transmission_forced_ = true;
         }
     } else if (!playing && transmission_forced_) {
-        if (talk_state_.endForced(connection_id)) {
-            transmission_forced_ = false;
-        }
+        talk_state_.endForced(connection_id);
+        transmission_forced_ = false;
     }
 }
 
@@ -132,6 +137,7 @@ void PluginRuntime::onClientMove(uint64_t connection_id, uint16_t client_id,
     }
 
     // Enabled/configured/cooldown checks are owned by the controller.
+    std::lock_guard<std::mutex> lock(controller_mutex_);
     controller_.onLocalClientEnteredChannel();
 }
 
@@ -152,6 +158,7 @@ void PluginRuntime::onConnectionEstablished(uint64_t connection_id) {
         return;
     }
 
+    std::lock_guard<std::mutex> lock(controller_mutex_);
     controller_.onLocalClientEnteredChannel();
 }
 

@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace ts3toolkit::plugin {
@@ -58,6 +59,7 @@ private:
     platform::SystemClock clock_;
     AudioPlaybackAdapter playback_adapter_;
     entrance::EntranceController controller_;
+    std::mutex controller_mutex_;
     audio::SoundDecoder sound_decoder_;
     audio::DecodedSound prepared_sound_;
     CustomCaptureDevice custom_device_;

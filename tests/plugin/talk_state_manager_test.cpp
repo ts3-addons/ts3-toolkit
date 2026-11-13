@@ -21,6 +21,7 @@ public:
     bool fail_flush = false;
     bool fail_registration = false;
     int registration_count = 0;
+    uint64_t last_input_connection = 0;
     std::string plugin_path = "plugin";
 
     bool registerCustomDevice(const std::string&, const std::string&, int,
@@ -67,7 +68,8 @@ public:
         voice_activation = enabled;
         return true;
     }
-    bool setInputDeactivated(uint64_t, bool deactivated) override {
+    bool setInputDeactivated(uint64_t connection_id, bool deactivated) override {
+        last_input_connection = connection_id;
         if (fail_set_input) {
             return false;
         }
@@ -157,6 +159,16 @@ void runTests() {
     CHECK_TRUE(!write_manager.beginForced(kConnection));
     CHECK_EQ(write_manager.isForcing(), false);
     CHECK_EQ(write_fail.input_deactivated, true);
+
+    FakeClientApi changed_connection;
+    plugin::TalkStateManager changed_manager(changed_connection);
+    CHECK_TRUE(changed_manager.beginForced(kConnection));
+    changed_connection.fail_set_vad = true;
+    CHECK_TRUE(!changed_manager.endForced(2));
+    CHECK_EQ(changed_connection.last_input_connection, kConnection);
+    CHECK_EQ(changed_connection.input_deactivated, true);
+    CHECK_EQ(changed_connection.flush_count, 2);
+    CHECK_TRUE(!changed_manager.isForcing());
 }
 
 TEST_MAIN()

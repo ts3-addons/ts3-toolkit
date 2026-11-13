@@ -42,23 +42,22 @@ bool TalkStateManager::beginForced(uint64_t connection_id) {
     return true;
 }
 
-bool TalkStateManager::endForced(uint64_t connection_id) {
+bool TalkStateManager::endForced(uint64_t /*connection_id*/) {
     if (!forcing_) {
         return false;
     }
 
     // Best-effort restore; even if a call fails, clear the forcing flag rather
     // than staying stuck and repeatedly attempting to restore.
-    const bool restored =
-        client_.setVoiceActivationEnabled(connection_id,
-                                          saved_.voice_activation) &&
-        client_.setInputDeactivated(connection_id,
-                                    saved_.input_deactivated) &&
-        client_.flushSelfUpdates(connection_id);
+    const bool vad_restored = client_.setVoiceActivationEnabled(
+        saved_connection_id_, saved_.voice_activation);
+    const bool input_restored = client_.setInputDeactivated(
+        saved_connection_id_, saved_.input_deactivated);
+    const bool flushed = client_.flushSelfUpdates(saved_connection_id_);
 
     forcing_ = false;
     saved_connection_id_ = 0;
-    return restored;
+    return vad_restored && input_restored && flushed;
 }
 
 bool TalkStateManager::isForcing() const {
