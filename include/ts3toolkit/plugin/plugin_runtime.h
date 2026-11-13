@@ -48,6 +48,7 @@ private:
 
     static constexpr const char* kDeviceId = "ts3toolkit_capture";
     static constexpr const char* kDeviceDisplayName = "TS3Toolkit Virtual Capture";
+    static constexpr const char* kPluginDataFolderName = "ts3toolkit";
     static constexpr std::size_t kCaptureRingCapacity =
         core::kFrameSamples * 10;  // ~100 ms microphone buffer
 

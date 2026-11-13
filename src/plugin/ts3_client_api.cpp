@@ -25,6 +25,10 @@ bool Ts3ClientApi::registerCustomDevice(const std::string& device_id,
     const unsigned int error = functions_.registerCustomDevice(
         device_id.c_str(), display_name.c_str(), capture_frequency,
         capture_channels, capture_frequency, capture_channels);
+    if (error != ERROR_ok) {
+        log("custom capture registration failed, error=" +
+                std::to_string(error), LogSeverity::kError);
+    }
     return error == ERROR_ok;
 }
 

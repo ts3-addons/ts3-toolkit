@@ -1,5 +1,6 @@
 #include "tests/test_macros.h"
 #include "ts3toolkit/plugin/client_api.h"
+#include "ts3toolkit/plugin/plugin_runtime.h"
 #include "ts3toolkit/plugin/talk_state_manager.h"
 
 using namespace ts3toolkit;
@@ -18,10 +19,14 @@ public:
     bool fail_set_vad = false;
     bool fail_set_input = false;
     bool fail_flush = false;
+    bool fail_registration = false;
+    int registration_count = 0;
+    std::string plugin_path = "plugin";
 
     bool registerCustomDevice(const std::string&, const std::string&, int,
                               int) override {
-        return true;
+        ++registration_count;
+        return !fail_registration;
     }
     bool unregisterCustomDevice(const std::string&) override {
         return true;
@@ -81,7 +86,7 @@ public:
         return "config";
     }
     std::string pluginPath() override {
-        return "plugin";
+        return plugin_path;
     }
 
     void log(const std::string&, plugin::LogSeverity) override {}
@@ -90,6 +95,15 @@ public:
 }  // namespace
 
 void runTests() {
+    // The client may not expose the plugin directory until this callback
+    // returns. Its absence must not prevent attempting device registration.
+    FakeClientApi path_unavailable;
+    path_unavailable.plugin_path.clear();
+    path_unavailable.fail_registration = true;
+    plugin::PluginRuntime runtime(path_unavailable);
+    CHECK_TRUE(!runtime.initialize());
+    CHECK_EQ(path_unavailable.registration_count, 1);
+
     constexpr uint64_t kConnection = 1;
 
     // beginForced lifts push-to-talk gating into continuous transmission.

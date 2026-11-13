@@ -32,6 +32,8 @@ bool CustomCaptureDevice::start() {
         return false;
     }
     if (!engine_.startCapture()) {
+        client_.log("hardware microphone capture failed to start",
+                    LogSeverity::kError);
         client_.unregisterCustomDevice(device_id_);
         return false;
     }

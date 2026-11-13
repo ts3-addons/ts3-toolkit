@@ -32,14 +32,19 @@ bool PluginRuntime::initialize() {
         return true;
     }
 
-    // Directories reported by the client. Plugin path anchors relative sound
-    // files; config path anchors the persistent settings document.
-    data_directory_ = client_.pluginPath();
+    std::string plugins_root = client_.pluginPath();
     const std::string config_directory = client_.configPath();
-    if (data_directory_.empty() || config_directory.empty()) {
-        client_.log("client did not report plugin/config paths",
+    if (config_directory.empty()) {
+        client_.log("client did not report config path; device not registered",
                     LogSeverity::kError);
         return false;
+    }
+
+    // getPluginPath returns the shared plugins directory; the plugin's private
+    // data folder is named after the plugin binary base name.
+    if (!plugins_root.empty()) {
+        data_directory_ =
+            (fs::path(plugins_root) / kPluginDataFolderName).string();
     }
 
     const fs::path config_file =
@@ -156,7 +161,9 @@ void PluginRuntime::reloadSound(
 
     if (!settings.sound_file.empty()) {
         const std::string path = resolveSoundPath(settings.sound_file);
-        audio::DecodeResult result = sound_decoder_.decodeFile(path);
+        audio::DecodeResult result = path.empty()
+            ? audio::DecodeResult{}
+            : sound_decoder_.decodeFile(path);
         if (result.status == audio::DecodeStatus::kOk &&
             !result.sound.empty()) {
             prepared_sound_ = std::move(result.sound);
@@ -176,6 +183,9 @@ std::string PluginRuntime::resolveSoundPath(
     const fs::path configured_path(configured);
     if (configured_path.is_absolute()) {
         return configured;
+    }
+    if (data_directory_.empty()) {
+        return {};
     }
     return (fs::path(data_directory_) / configured_path).string();
 }
