@@ -12,8 +12,9 @@ add_library(ts3toolkit_core STATIC
 )
 
 target_include_directories(ts3toolkit_core
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/miniaudio
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/miniaudio
 )
 
 target_compile_features(ts3toolkit_core PUBLIC cxx_std_17)
