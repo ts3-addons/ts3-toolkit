@@ -43,6 +43,21 @@ public:
                                     uint64_t& channel_id) = 0;
     virtual uint64_t currentConnectionId() = 0;
 
+    // Transmission (talk state) primitives. The client only transmits captured
+    // frames while the local input is active; under push-to-talk the input is
+    // deactivated until the hotkey is held. These primitives let the runtime
+    // temporarily lift that gating while an overlay is playing. Each returns
+    // false when the setting cannot be read or applied.
+    virtual bool getVoiceActivationEnabled(uint64_t connection_id,
+                                           bool& enabled) = 0;
+    virtual bool getInputDeactivated(uint64_t connection_id,
+                                     bool& deactivated) = 0;
+    virtual bool setVoiceActivationEnabled(uint64_t connection_id,
+                                           bool enabled) = 0;
+    virtual bool setInputDeactivated(uint64_t connection_id,
+                                     bool deactivated) = 0;
+    virtual bool flushSelfUpdates(uint64_t connection_id) = 0;
+
     // Filesystem roots reported by the client.
     virtual std::string configPath() = 0;
     virtual std::string pluginPath() = 0;

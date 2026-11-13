@@ -32,6 +32,16 @@ public:
                             uint64_t& channel_id) override;
     uint64_t currentConnectionId() override;
 
+    bool getVoiceActivationEnabled(uint64_t connection_id,
+                                   bool& enabled) override;
+    bool getInputDeactivated(uint64_t connection_id,
+                             bool& deactivated) override;
+    bool setVoiceActivationEnabled(uint64_t connection_id,
+                                   bool enabled) override;
+    bool setInputDeactivated(uint64_t connection_id,
+                             bool deactivated) override;
+    bool flushSelfUpdates(uint64_t connection_id) override;
+
     std::string configPath() override;
     std::string pluginPath() override;
 

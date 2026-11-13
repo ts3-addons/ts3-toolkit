@@ -66,6 +66,50 @@ uint64_t Ts3ClientApi::currentConnectionId() {
     return functions_.getCurrentServerConnectionHandlerID();
 }
 
+bool Ts3ClientApi::getVoiceActivationEnabled(uint64_t connection_id,
+                                             bool& enabled) {
+    char* raw = nullptr;
+    if (functions_.getPreProcessorConfigValue(connection_id, "vad",
+                                              &raw) != ERROR_ok) {
+        return false;
+    }
+    enabled = (std::string(raw) == "true");
+    functions_.freeMemory(raw);
+    return true;
+}
+
+bool Ts3ClientApi::getInputDeactivated(uint64_t connection_id,
+                                       bool& deactivated) {
+    int value = 0;
+    if (functions_.getClientSelfVariableAsInt(
+            connection_id, CLIENT_INPUT_DEACTIVATED,
+            &value) != ERROR_ok) {
+        return false;
+    }
+    deactivated = (value == INPUT_DEACTIVATED);
+    return true;
+}
+
+bool Ts3ClientApi::setVoiceActivationEnabled(uint64_t connection_id,
+                                             bool enabled) {
+    const char* value = enabled ? "true" : "false";
+    return functions_.setPreProcessorConfigValue(
+               connection_id, "vad", value) == ERROR_ok;
+}
+
+bool Ts3ClientApi::setInputDeactivated(uint64_t connection_id,
+                                       bool deactivated) {
+    const int value = deactivated ? INPUT_DEACTIVATED : INPUT_ACTIVE;
+    return functions_.setClientSelfVariableAsInt(
+               connection_id, CLIENT_INPUT_DEACTIVATED,
+               value) == ERROR_ok;
+}
+
+bool Ts3ClientApi::flushSelfUpdates(uint64_t connection_id) {
+    return functions_.flushClientSelfUpdates(
+               connection_id, nullptr) == ERROR_ok;
+}
+
 std::string Ts3ClientApi::configPath() {
     char buffer[kPathBufferSize] = {0};
     functions_.getConfigPath(buffer, kPathBufferSize);
