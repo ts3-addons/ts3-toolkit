@@ -1,4 +1,5 @@
 #include <array>
+#include <utility>
 
 #include "tests/test_macros.h"
 #include "ts3toolkit/audio/audio_engine.h"
@@ -53,6 +54,18 @@ void runTests() {
     engine.fillFrame(half.data(), half.size());
     CHECK_EQ(half[0], 50);
     CHECK_EQ(half[1], 100);
+
+    // Verify positive and negative samples at multiple volume levels.
+    DecodedSound levels;
+    levels.samples = {30000, -30000};
+    for (const auto& level : {std::pair<float, int>{0.4f, 12000},
+                              {0.5f, 15000}, {1.0f, 30000}}) {
+        engine.playSound(levels, level.first);
+        std::array<ts3toolkit::core::Sample, 2> output{};
+        engine.fillFrame(output.data(), output.size());
+        CHECK_EQ(output[0], level.second);
+        CHECK_EQ(output[1], -level.second);
+    }
 
     // The same gain stage is used for transmitted audio and local preview.
     engine.playSound(sound, 0.0f);
