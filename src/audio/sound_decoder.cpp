@@ -1,6 +1,7 @@
 #include "ts3toolkit/audio/sound_decoder.h"
 
 #include <miniaudio.h>
+#include <algorithm>
 #include <filesystem>
 
 namespace ts3toolkit::audio {
@@ -23,7 +24,7 @@ DecodeStatus classifyInitError(ma_result result) {
 
 }  // namespace
 
-DecodeResult SoundDecoder::decodeFile(const std::string& path) const {
+DecodeResult SoundDecoder::decodeFile(const std::string& path, std::size_t max_samples) const {
     DecodeResult result;
 
     ma_decoder_config config = ma_decoder_config_init(
@@ -55,7 +56,7 @@ DecodeResult SoundDecoder::decodeFile(const std::string& path) const {
         return result;
     }
 
-    if (total_frames > kMaxEntranceSoundSamples) {
+    if (total_frames > max_samples || total_frames > kMaxSourceSoundSamples) {
         result.status = DecodeStatus::kTooLong;
         ma_decoder_uninit(&decoder);
         return result;
@@ -74,6 +75,28 @@ DecodeResult SoundDecoder::decodeFile(const std::string& path) const {
         return result;
     }
 
+    result.status = DecodeStatus::kOk;
+    return result;
+}
+
+DecodeResult selectRange(const DecodedSound& source, int start_ms, int end_ms) {
+    DecodeResult result{};
+    constexpr std::size_t samples_per_ms = core::kSampleRateHz / 1000;
+    if (start_ms < 0 || end_ms < -1 ||
+        static_cast<std::size_t>(start_ms) > kMaxSourceSoundSamples / samples_per_ms ||
+        (end_ms >= 0 && static_cast<std::size_t>(end_ms) >
+                            (source.samples.size() + samples_per_ms - 1) / samples_per_ms)) {
+        result.status = DecodeStatus::kInvalidRange;
+        return result;
+    }
+    const std::size_t start = static_cast<std::size_t>(start_ms) * samples_per_ms;
+    const std::size_t end = end_ms == -1 ? source.samples.size() :
+        (std::min)(static_cast<std::size_t>(end_ms) * samples_per_ms, source.samples.size());
+    if (end <= start || end - start > kMaxEntranceSoundSamples) {
+        result.status = DecodeStatus::kInvalidRange;
+        return result;
+    }
+    result.sound.samples.assign(source.samples.begin() + start, source.samples.begin() + end);
     result.status = DecodeStatus::kOk;
     return result;
 }

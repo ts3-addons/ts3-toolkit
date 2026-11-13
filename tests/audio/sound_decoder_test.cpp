@@ -135,10 +135,36 @@ void runTests() {
     writeWavFilled(long_path, 48000 * 31);
     DecodeResult too_long = decoder.decodeFile(long_path);
     CHECK_EQ(too_long.status, DecodeStatus::kTooLong);
+    DecodeResult source = decoder.decodeFile(long_path, kMaxSourceSoundSamples);
+    CHECK_EQ(source.status, DecodeStatus::kOk);
+    CHECK_EQ(selectRange(source.sound, 0, -1).status, DecodeStatus::kInvalidRange);
+    DecodeResult segment = selectRange(source.sound, 1000, 31000);
+    CHECK_EQ(segment.status, DecodeStatus::kOk);
+    CHECK_EQ(segment.sound.lengthSamples(), kMaxEntranceSoundSamples);
+    CHECK_EQ(selectRange(source.sound, 1000, 1000).status, DecodeStatus::kInvalidRange);
+    CHECK_EQ(selectRange(source.sound, 0, 31001).status, DecodeStatus::kInvalidRange);
+    CHECK_EQ(selectRange(source.sound, -1, 100).status, DecodeStatus::kInvalidRange);
+    CHECK_EQ(selectRange(source.sound, 2000, 33000).status, DecodeStatus::kInvalidRange);
+
+    // Millisecond boundaries map to sample positions and preserve the exclusive end.
+    DecodedSound indexed;
+    indexed.samples.resize(144);
+    for (std::size_t i = 0; i < indexed.samples.size(); ++i) indexed.samples[i] = static_cast<std::int16_t>(i);
+    segment = selectRange(indexed, 1, 2);
+    CHECK_EQ(segment.status, DecodeStatus::kOk);
+    CHECK_EQ(segment.sound.lengthSamples(), 48u);
+    CHECK_EQ(segment.sound.samples.front(), 48);
+    CHECK_EQ(segment.sound.samples.back(), 95);
+
+    const std::string oversized_path = tempPath("oversized.wav");
+    writeWavFilled(oversized_path, 48000 * 301);
+    CHECK_EQ(decoder.decodeFile(oversized_path, kMaxSourceSoundSamples).status,
+             DecodeStatus::kTooLong);
 
     fs::remove(wav_path);
     fs::remove(bad_path);
     fs::remove(long_path);
+    fs::remove(oversized_path);
 }
 
 TEST_MAIN()

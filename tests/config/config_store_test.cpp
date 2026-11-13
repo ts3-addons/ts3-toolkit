@@ -43,6 +43,8 @@ void runTests() {
     document.entrance_sound.cooldown_seconds = 42;
     document.entrance_sound.local_monitor = true;
     document.entrance_sound.delay_ms = 1250;
+    document.entrance_sound.start_ms = 1500;
+    document.entrance_sound.end_ms = 22500;
     CHECK_TRUE(store.save(document));
     CHECK_TRUE(!fs::exists(path + ".tmp"));
 
@@ -55,6 +57,8 @@ void runTests() {
     CHECK_EQ(second.document.entrance_sound.cooldown_seconds, 42);
     CHECK_EQ(second.document.entrance_sound.local_monitor, true);
     CHECK_EQ(second.document.entrance_sound.delay_ms, 1250);
+    CHECK_EQ(second.document.entrance_sound.start_ms, 1500);
+    CHECK_EQ(second.document.entrance_sound.end_ms, 22500);
 
     document.entrance_sound.delay_ms = 2300;
     CHECK_TRUE(store.save(document));
@@ -65,6 +69,19 @@ void runTests() {
     CHECK_EQ(migrated.status, LoadStatus::kLoaded);
     CHECK_EQ(migrated.document.schema_version, kCurrentSchemaVersion);
     CHECK_EQ(migrated.document.entrance_sound.delay_ms, 0);
+    CHECK_EQ(migrated.document.entrance_sound.start_ms, 0);
+    CHECK_EQ(migrated.document.entrance_sound.end_ms, -1);
+
+    writeRaw(path, "schema_version = 2\n[entrance_sound]\ndelay_ms = 1000\n");
+    migrated = store.load();
+    CHECK_EQ(migrated.status, LoadStatus::kLoaded);
+    CHECK_EQ(migrated.document.entrance_sound.delay_ms, 1000);
+    CHECK_EQ(migrated.document.entrance_sound.end_ms, -1);
+
+    writeRaw(path, "schema_version = 2\n[entrance_sound]\nstart_ms = 10\n");
+    CHECK_EQ(store.load().status, LoadStatus::kRejected);
+    writeRaw(path, "schema_version = 3\n[entrance_sound]\nstart_ms = 1000\nend_ms = 1000\n");
+    CHECK_EQ(store.load().status, LoadStatus::kRejected);
 
     writeRaw(path, "schema_version = 2\n[entrance_sound]\ndelay_ms = 30001\n");
     CHECK_EQ(store.load().status, LoadStatus::kRejected);

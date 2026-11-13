@@ -10,6 +10,7 @@ namespace ts3toolkit::audio {
 inline constexpr int kMaxEntranceSoundSeconds = 30;
 inline constexpr std::size_t kMaxEntranceSoundSamples =
     core::kSampleRateHz * kMaxEntranceSoundSeconds;
+inline constexpr std::size_t kMaxSourceSoundSamples = core::kSampleRateHz * 300;
 
 // Category of a decode attempt.
 enum class DecodeStatus {
@@ -18,6 +19,7 @@ enum class DecodeStatus {
     kUnsupportedFormat,
     kTooLong,
     kDecodeFailed,
+    kInvalidRange,
 };
 
 struct DecodeResult {
@@ -28,7 +30,10 @@ struct DecodeResult {
 // Decodes supported sound files into normalized 48 kHz mono s16 PCM.
 class SoundDecoder {
 public:
-    DecodeResult decodeFile(const std::string& path) const;
+    DecodeResult decodeFile(const std::string& path,
+                            std::size_t max_samples = kMaxEntranceSoundSamples) const;
 };
+
+DecodeResult selectRange(const DecodedSound& source, int start_ms, int end_ms);
 
 }  // namespace ts3toolkit::audio

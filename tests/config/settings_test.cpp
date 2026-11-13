@@ -38,6 +38,17 @@ void runTests() {
     EntranceSoundSettings long_path = defaults;
     long_path.sound_file.assign(kMaxSoundPathLength + 1, 'a');
     CHECK_TRUE(!validate(long_path).valid);
+
+    EntranceSoundSettings range = defaults;
+    range.start_ms = 5000;
+    range.end_ms = 35000;
+    CHECK_TRUE(validate(range).valid);
+    range.end_ms = 35001;
+    CHECK_TRUE(!validate(range).valid);
+    range.end_ms = range.start_ms;
+    CHECK_TRUE(!validate(range).valid);
+    range.end_ms = -1;
+    CHECK_TRUE(validate(range).valid);
 }
 
 TEST_MAIN()

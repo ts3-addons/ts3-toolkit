@@ -151,6 +151,8 @@ std::string serialize(const SettingsDocument& document) {
     out << "cooldown_seconds = " << sound.cooldown_seconds << "\n";
     out << "local_monitor = " << boolString(sound.local_monitor) << "\n";
     out << "delay_ms = " << sound.delay_ms << "\n";
+    out << "start_ms = " << sound.start_ms << "\n";
+    out << "end_ms = " << sound.end_ms << "\n";
     return out.str();
 }
 
@@ -158,6 +160,7 @@ bool parse(const std::string& text, SettingsDocument& document) {
     document = SettingsDocument{};
     bool saw_schema = false;
     bool saw_delay = false;
+    bool saw_range = false;
     std::string section;
     std::istringstream stream(text);
     std::string line;
@@ -226,6 +229,12 @@ bool parse(const std::string& text, SettingsDocument& document) {
             if (!parseInt(value, sound.delay_ms)) {
                 return false;
             }
+        } else if (key == "start_ms") {
+            saw_range = true;
+            if (!parseInt(value, sound.start_ms)) return false;
+        } else if (key == "end_ms") {
+            saw_range = true;
+            if (!parseInt(value, sound.end_ms)) return false;
         } else {
             return false;
         }
@@ -234,9 +243,10 @@ bool parse(const std::string& text, SettingsDocument& document) {
     if (!saw_schema) {
         return false;
     }
-    if ((document.schema_version != 1 &&
+    if ((document.schema_version != 1 && document.schema_version != 2 &&
          document.schema_version != kCurrentSchemaVersion) ||
-        (document.schema_version == 1 && saw_delay)) {
+        (document.schema_version == 1 && saw_delay) ||
+        (document.schema_version < 3 && saw_range)) {
         return false;
     }
     document.schema_version = kCurrentSchemaVersion;

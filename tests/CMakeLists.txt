@@ -7,6 +7,7 @@ set(TEST_TARGETS
     audio_sound_decoder_test
     audio_engine_test
     entrance_controller_test
+    plugin_range_time_test
 )
 
 add_executable(core_pcm_math_test core/pcm_math_test.cpp)
@@ -17,6 +18,7 @@ add_executable(config_config_store_test config/config_store_test.cpp)
 add_executable(audio_sound_decoder_test audio/sound_decoder_test.cpp)
 add_executable(audio_engine_test audio/audio_engine_test.cpp)
 add_executable(entrance_controller_test entrance/entrance_controller_test.cpp)
+add_executable(plugin_range_time_test plugin/range_time_test.cpp)
 
 # Plugin-layer tests link the plugin static library (which publicly carries the
 # core dependency) rather than core alone.

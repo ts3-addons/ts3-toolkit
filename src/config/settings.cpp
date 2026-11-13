@@ -17,6 +17,13 @@ ValidationResult validate(const EntranceSoundSettings& settings) {
     if (settings.delay_ms < 0 || settings.delay_ms > kMaxDelayMs) {
         return {false, "delay_ms", "value must be within [0, 30000]"};
     }
+    if (settings.start_ms < 0 || settings.start_ms > kMaxSourceDurationMs ||
+        settings.end_ms < -1 || settings.end_ms > kMaxSourceDurationMs ||
+        (settings.end_ms != -1 &&
+         (settings.end_ms <= settings.start_ms ||
+          settings.end_ms - settings.start_ms > kMaxSelectionDurationMs))) {
+        return {false, "range", "invalid sound selection"};
+    }
     return {true, "", ""};
 }
 

@@ -210,7 +210,10 @@ void PluginRuntime::reloadSound(
         const std::string path = resolveSoundPath(settings.sound_file);
         audio::DecodeResult result = path.empty()
             ? audio::DecodeResult{}
-            : sound_decoder_.decodeFile(path);
+            : sound_decoder_.decodeFile(path, audio::kMaxSourceSoundSamples);
+        if (result.status == audio::DecodeStatus::kOk) {
+            result = audio::selectRange(result.sound, settings.start_ms, settings.end_ms);
+        }
         if (result.status == audio::DecodeStatus::kOk &&
             !result.sound.empty()) {
             prepared_sound_ = std::move(result.sound);

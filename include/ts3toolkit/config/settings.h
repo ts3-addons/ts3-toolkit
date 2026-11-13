@@ -4,7 +4,7 @@
 
 namespace ts3toolkit::config {
 
-inline constexpr int kCurrentSchemaVersion = 2;
+inline constexpr int kCurrentSchemaVersion = 3;
 
 // Validation bounds. They are part of the settings contract and are shared by
 // the parser, the storage layer, and the future settings UI.
@@ -13,6 +13,8 @@ inline constexpr float kMaxVolume = 1.0f;
 inline constexpr int kMinCooldownSeconds = 0;
 inline constexpr int kMaxCooldownSeconds = 300;
 inline constexpr int kMaxDelayMs = 30000;
+inline constexpr int kMaxSourceDurationMs = 300000;
+inline constexpr int kMaxSelectionDurationMs = 30000;
 inline constexpr std::size_t kMaxSoundPathLength = 1024;
 
 // Validated entrance sound settings. Field meanings match
@@ -24,6 +26,8 @@ struct EntranceSoundSettings {
     int cooldown_seconds = 5;
     bool local_monitor = false;
     int delay_ms = 0;
+    int start_ms = 0;
+    int end_ms = -1;
 };
 
 // Full persisted settings document.
