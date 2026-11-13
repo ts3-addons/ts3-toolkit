@@ -13,7 +13,8 @@ EntranceController::EntranceController(const platform::Clock& clock,
       settings_(),
       prepared_sound_(nullptr),
       state_(ControllerState::kIdle),
-      cooldown_start_ms_(0) {}
+      cooldown_start_ms_(0),
+      pending_start_ms_(0) {}
 
 void EntranceController::updateSettings(
     const config::EntranceSoundSettings& settings,
@@ -26,11 +27,15 @@ void EntranceController::updateSettings(
         playback_.stopOverlay();
         state_ = ControllerState::kIdle;
     }
+    if ((!settings_.enabled || prepared_sound_ == nullptr ||
+         prepared_sound_->empty()) && state_ == ControllerState::kPending) {
+        state_ = ControllerState::kIdle;
+    }
 }
 
 void EntranceController::onLocalClientEnteredChannel() {
     // Events during cooldown are dropped per the behavior contract.
-    if (state_ == ControllerState::kCooldown) {
+    if (state_ != ControllerState::kIdle) {
         return;
     }
     if (!settings_.enabled || settings_.sound_file.empty()) {
@@ -41,12 +46,23 @@ void EntranceController::onLocalClientEnteredChannel() {
         return;
     }
 
-    playback_.startOverlay(*prepared_sound_, settings_.volume);
-    state_ = ControllerState::kPlaying;
+    if (settings_.delay_ms == 0) {
+        playback_.startOverlay(*prepared_sound_, settings_.volume);
+        state_ = ControllerState::kPlaying;
+    } else {
+        pending_start_ms_ = clock_.nowMilliseconds();
+        state_ = ControllerState::kPending;
+    }
 }
 
 void EntranceController::poll() {
     const std::int64_t now = clock_.nowMilliseconds();
+
+    if (state_ == ControllerState::kPending &&
+        now - pending_start_ms_ >= settings_.delay_ms) {
+        playback_.startOverlay(*prepared_sound_, settings_.volume);
+        state_ = ControllerState::kPlaying;
+    }
 
     if (state_ == ControllerState::kPlaying &&
         !playback_.isOverlayPlaying()) {

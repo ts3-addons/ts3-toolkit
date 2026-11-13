@@ -11,6 +11,7 @@ namespace ts3toolkit::entrance {
 // Logical state of the entrance sound feature.
 enum class ControllerState {
     kIdle,
+    kPending,
     kPlaying,
     kCooldown,
 };
@@ -54,6 +55,7 @@ private:
     const audio::DecodedSound* prepared_sound_;
     ControllerState state_;
     std::int64_t cooldown_start_ms_;
+    std::int64_t pending_start_ms_;
 };
 
 }  // namespace ts3toolkit::entrance

@@ -35,12 +35,13 @@ administrator moving the user) count as entering a channel.
 ## State machine
 
 ```
-Idle --(valid enter event)--> Playing --(sound exhausted)--> Cooldown
+Idle --(valid enter event)--> Pending --> Playing --(sound exhausted)--> Cooldown
  ^                                                             |
  +-----------------------(cooldown elapsed)--------------------+
 ```
 
 - **Idle**: waiting for a valid enter event.
+- **Pending**: waiting for the configured delay; repeated entries are ignored.
 - **Playing**: decoded sound frames are being mixed into the pump output.
 - **Cooldown**: new enter events are ignored until the cooldown window elapses.
 
@@ -50,7 +51,7 @@ sound overlay.
 ## Configuration contract
 
 The settings are persisted through the storage layer with a versioned schema.
-The current schema version is `1`.
+The current schema version is `2`. Version 1 documents migrate with zero delay.
 
 | Key | Type | Range / constraint | Default |
 |---|---|---|---|
@@ -59,6 +60,7 @@ The current schema version is `1`.
 | `volume` | float | `0.0` to `1.0` | `0.8` |
 | `cooldown_seconds` | integer | `0` to `300` | `5` |
 | `local_monitor` | boolean | `true` / `false` | `false` |
+| `delay_ms` | integer | `0` to `30000` milliseconds | `0` |
 
 Rules:
 

@@ -62,6 +62,34 @@ void runTests() {
     controller.updateSettings(settings, nullptr);
     controller.onLocalClientEnteredChannel();
     CHECK_EQ(controller.state(), ControllerState::kIdle);
+
+    FakeClock delay_clock;
+    FakePlayback delay_playback;
+    EntranceController delayed(delay_clock, delay_playback);
+    settings.delay_ms = 1500;
+    delayed.updateSettings(settings, &sound);
+    delayed.onLocalClientEnteredChannel();
+    CHECK_EQ(delayed.state(), ControllerState::kPending);
+    delayed.onLocalClientEnteredChannel();
+    delay_clock.advance(1499);
+    delayed.poll();
+    CHECK_EQ(delay_playback.start_count, 0);
+    delay_clock.advance(1);
+    delayed.poll();
+    CHECK_EQ(delay_playback.start_count, 1);
+    CHECK_EQ(delayed.state(), ControllerState::kPlaying);
+
+    FakePlayback cancel_playback;
+    EntranceController cancelled(delay_clock, cancel_playback);
+    cancelled.updateSettings(settings, &sound);
+    cancelled.onLocalClientEnteredChannel();
+    settings.enabled = false;
+    cancelled.updateSettings(settings, &sound);
+    delay_clock.advance(1500);
+    cancelled.poll();
+    CHECK_EQ(cancel_playback.start_count, 0);
+    settings.enabled = true;
+    settings.delay_ms = 0;
     CHECK_EQ(playback.start_count, 0);
 
     // With prepared data the trigger plays.

@@ -14,6 +14,9 @@ ValidationResult validate(const EntranceSoundSettings& settings) {
     if (settings.sound_file.size() > kMaxSoundPathLength) {
         return {false, "sound_file", "path exceeds the maximum length"};
     }
+    if (settings.delay_ms < 0 || settings.delay_ms > kMaxDelayMs) {
+        return {false, "delay_ms", "value must be within [0, 30000]"};
+    }
     return {true, "", ""};
 }
 

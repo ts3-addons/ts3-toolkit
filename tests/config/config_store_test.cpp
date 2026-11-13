@@ -42,6 +42,7 @@ void runTests() {
     document.entrance_sound.volume = 0.35f;
     document.entrance_sound.cooldown_seconds = 42;
     document.entrance_sound.local_monitor = true;
+    document.entrance_sound.delay_ms = 1250;
     CHECK_TRUE(store.save(document));
     CHECK_TRUE(!fs::exists(path + ".tmp"));
 
@@ -53,6 +54,16 @@ void runTests() {
     CHECK_CLOSE(second.document.entrance_sound.volume, 0.35f, 0.0001);
     CHECK_EQ(second.document.entrance_sound.cooldown_seconds, 42);
     CHECK_EQ(second.document.entrance_sound.local_monitor, true);
+    CHECK_EQ(second.document.entrance_sound.delay_ms, 1250);
+
+    writeRaw(path, "schema_version = 1\n[entrance_sound]\nvolume = 0.5\n");
+    LoadOutcome migrated = store.load();
+    CHECK_EQ(migrated.status, LoadStatus::kLoaded);
+    CHECK_EQ(migrated.document.schema_version, kCurrentSchemaVersion);
+    CHECK_EQ(migrated.document.entrance_sound.delay_ms, 0);
+
+    writeRaw(path, "schema_version = 2\n[entrance_sound]\ndelay_ms = 30001\n");
+    CHECK_EQ(store.load().status, LoadStatus::kRejected);
 
     // Corrupt content is rejected, not partially applied.
     writeRaw(path, "this is not valid config\n");

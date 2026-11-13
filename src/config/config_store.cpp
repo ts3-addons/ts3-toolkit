@@ -138,12 +138,14 @@ std::string serialize(const SettingsDocument& document) {
     out << "volume = " << sound.volume << "\n";
     out << "cooldown_seconds = " << sound.cooldown_seconds << "\n";
     out << "local_monitor = " << boolString(sound.local_monitor) << "\n";
+    out << "delay_ms = " << sound.delay_ms << "\n";
     return out.str();
 }
 
 bool parse(const std::string& text, SettingsDocument& document) {
     document = SettingsDocument{};
     bool saw_schema = false;
+    bool saw_delay = false;
     std::string section;
     std::istringstream stream(text);
     std::string line;
@@ -207,6 +209,11 @@ bool parse(const std::string& text, SettingsDocument& document) {
             if (!parseBool(value, sound.local_monitor)) {
                 return false;
             }
+        } else if (key == "delay_ms") {
+            saw_delay = true;
+            if (!parseInt(value, sound.delay_ms)) {
+                return false;
+            }
         } else {
             return false;
         }
@@ -215,10 +222,12 @@ bool parse(const std::string& text, SettingsDocument& document) {
     if (!saw_schema) {
         return false;
     }
-    // Only schema 1 exists; future documents are rejected, older ones migrate.
-    if (document.schema_version != kCurrentSchemaVersion) {
+    if ((document.schema_version != 1 &&
+         document.schema_version != kCurrentSchemaVersion) ||
+        (document.schema_version == 1 && saw_delay)) {
         return false;
     }
+    document.schema_version = kCurrentSchemaVersion;
     return validate(document.entrance_sound).valid;
 }
 
