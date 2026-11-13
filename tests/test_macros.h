@@ -27,10 +27,8 @@ inline int& failureCount() {
         auto check_actual = (actual);                                      \
         auto check_expected = (expected);                                  \
         if (!(check_actual == check_expected)) {                           \
-            std::fprintf(stderr,                                           \
-                         "CHECK_EQ failed: %s == %s, got %s vs %s (%s:%d)\n", \
-                         #actual, #expected, #check_actual, #check_expected, \
-                         __FILE__, __LINE__);                              \
+            std::fprintf(stderr, "CHECK_EQ failed: %s == %s (%s:%d)\n",   \
+                         #actual, #expected, __FILE__, __LINE__);          \
             ++ts3toolkit::testing::failureCount();                        \
         }                                                                  \
     } while (0)
