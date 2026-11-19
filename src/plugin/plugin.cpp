@@ -81,18 +81,23 @@ TS3_EXPORT void ts3plugin_shutdown() {
 
 TS3_EXPORT void ts3plugin_registerPluginID(const char* id) {
     g_plugin.shutdown();
-    if (id != nullptr) {
-        g_plugin_id.assign(id);
-    }
-    auto client = std::make_unique<ts3toolkit::plugin::Ts3ClientApi>(g_functions, g_plugin_id);
-    auto runtime = std::make_unique<ts3toolkit::plugin::PluginRuntime>(*client);
-    g_plugin.client = client.release();
-    g_plugin.runtime = runtime.release();
+    try {
+        g_plugin_id = id ? id : "";
+        auto client = std::make_unique<ts3toolkit::plugin::Ts3ClientApi>(g_functions, g_plugin_id);
+        auto runtime = std::make_unique<ts3toolkit::plugin::PluginRuntime>(*client);
+        g_plugin.client = client.release();
+        g_plugin.runtime = runtime.release();
 
-    if (!g_plugin.runtime->initialize()) {
-        // Fail closed: drop the half-initialized runtime but stay loaded so
-        // the client does not treat the microphone path as broken.
-        g_plugin.resetRuntime();
+        if (!g_plugin.runtime->initialize()) {
+            g_plugin.resetRuntime();
+        }
+    } catch (...) {
+        // Never let a C++ exception escape into the TeamSpeak host.
+        g_plugin.shutdown();
+        if (g_functions.logMessage) {
+            g_functions.logMessage("Plugin initialization failed with an exception",
+                                   LogLevel_ERROR, "TS3Toolkit", 0);
+        }
     }
 }
 
@@ -134,5 +139,17 @@ TS3_EXPORT void ts3plugin_onConnectStatusChangeEvent(
         g_plugin.runtime->onConnectionEstablished(server_connection_handler_id);
     } else if (g_plugin.runtime && new_status == STATUS_DISCONNECTED) {
         g_plugin.runtime->onConnectionDisconnected(server_connection_handler_id);
+    }
+}
+
+TS3_EXPORT void ts3plugin_onEditCapturedVoiceDataEvent(
+    uint64 server_connection_handler_id, short* samples, int sample_count,
+    int channels, int* edited) {
+    if (g_plugin.runtime && edited &&
+        g_plugin.runtime->onCapturedAudio(server_connection_handler_id, samples,
+                                          sample_count, channels)) {
+        // Bit 0 marks modified samples; bit 1 requests transmission. Preserve
+        // any flags the client or another plugin already supplied.
+        *edited |= 3;
     }
 }

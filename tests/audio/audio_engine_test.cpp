@@ -21,6 +21,20 @@ void runTests() {
     AudioEngine engine(64);
     CHECK_EQ(engine.state(), PlaybackState::kIdle);
 
+    // Preserve microphone audio, add the mono overlay to both channels, and
+    // clamp rather than overflow at the sample limits.
+    DecodedSound stereo_sound;
+    stereo_sound.samples = {1000, -1000};
+    engine.playSound(stereo_sound, 1.0f);
+    std::array<ts3toolkit::core::Sample, 6> stereo = {32000, -100, -32000, 100, 9, 10};
+    CHECK_TRUE(engine.mixCapturedFrames(stereo.data(), 3, 2));
+    CHECK_EQ(stereo[0], 32767);
+    CHECK_EQ(stereo[1], 900);
+    CHECK_EQ(stereo[2], -32768);
+    CHECK_EQ(stereo[3], -900);
+    CHECK_EQ(stereo[4], 9);
+    CHECK_EQ(stereo[5], 10);
+
     // With no capture running, frames are defined silence.
     std::array<ts3toolkit::core::Sample, 4> frame{};
     engine.fillFrame(frame.data(), frame.size());

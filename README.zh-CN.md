@@ -8,7 +8,7 @@ TS3Toolkit 是一个面向 Windows x64 的 TeamSpeak 3 原生客户端插件。�
 
 ## 功能
 
-- 通过自定义 TeamSpeak 采集设备混入进频道音效。
+- 通过 TeamSpeak 麦克风音频回调混入进频道音效。
 - 功能空闲或发生错误时，麦克风仍保持正常透传。
 - 可配置启用状态、音量、延迟、冷却时间和音频片段范围。
 - 支持 WAV、MP3、FLAC，并统一转换为 48 kHz、单声道、16-bit PCM。
@@ -21,8 +21,7 @@ TS3Toolkit 是一个面向 Windows x64 的 TeamSpeak 3 原生客户端插件。�
 2. 在 TeamSpeak 3 中打开插件管理器，安装
    `build/package/ts3toolkit-0.1.0.ts3_plugin`。
 3. 根据提示重启 TeamSpeak。
-4. 打开 TS3Toolkit 设置并选择音频文件，然后将 TeamSpeak 的输入设备改为
-   `TS3Toolkit Virtual Capture`。
+4. 打开 TS3Toolkit 设置并选择音频文件，在 TeamSpeak 的采集设置中选择正常的麦克风。
 
 ## 构建与测试
 
@@ -46,7 +45,7 @@ cmake --build build --config Release --target ts3toolkit_package
 - `audio` — 麦克风采集、解码、重采样和播放。
 - `config` — 版本化设置存储与校验。
 - `entrance` — 触发、延迟、冷却和播放状态。
-- `plugin` — TeamSpeak 3 入口、事件和自定义采集设备。
+- `plugin` — TeamSpeak 3 入口、事件和音频回调。
 - `platform` — Windows 平台辅助代码。
 
 目录结构：

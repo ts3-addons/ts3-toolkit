@@ -24,6 +24,17 @@ void writeRaw(const std::string& path, const std::string& content) {
 }  // namespace
 
 void runTests() {
+    // TeamSpeak supplies UTF-8 paths even when the Windows system code page
+    // cannot represent a directory name.
+    const fs::path unicode_path = fs::temp_directory_path() /
+        fs::u8path(u8"ts3toolkit_测试_🎵.cfg");
+    fs::remove(unicode_path);
+    ConfigStore unicode_store(unicode_path.u8string());
+    SettingsDocument unicode_document;
+    CHECK_TRUE(unicode_store.save(unicode_document));
+    CHECK_EQ(unicode_store.load().status, LoadStatus::kLoaded);
+    fs::remove(unicode_path);
+
     const std::string path = pathFor("store");
     fs::remove(path);
     fs::remove(path + ".tmp");

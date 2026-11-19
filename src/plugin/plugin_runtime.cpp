@@ -1,5 +1,6 @@
 #include "ts3toolkit/plugin/plugin_runtime.h"
 
+#include <chrono>
 #include <filesystem>
 #include <utility>
 
@@ -15,7 +16,6 @@ PluginRuntime::PluginRuntime(ClientApi& client)
       controller_(clock_, playback_adapter_),
       sound_decoder_(),
       prepared_sound_(),
-      custom_device_(client_, audio_engine_, kDeviceId, kDeviceDisplayName),
       talk_state_(client_),
       transmission_forced_(false),
       config_store_(nullptr),
@@ -44,13 +44,13 @@ bool PluginRuntime::initialize() {
     // data folder is named after the plugin binary base name.
     if (!plugins_root.empty()) {
         data_directory_ =
-            (fs::path(plugins_root) / kPluginDataFolderName).string();
+            (fs::u8path(plugins_root) / kPluginDataFolderName).u8string();
     }
 
     const fs::path config_file =
-        fs::path(config_directory) / "ts3toolkit.ini";
+        fs::u8path(config_directory) / "ts3toolkit.ini";
     config_store_ =
-        std::make_unique<config::ConfigStore>(config_file.string());
+        std::make_unique<config::ConfigStore>(config_file.u8string());
 
     config::LoadOutcome loaded = config_store_->load();
     settings_doc_ = std::move(loaded.document);
@@ -66,38 +66,28 @@ bool PluginRuntime::initialize() {
         client_.log("local audio monitor failed to start", LogSeverity::kWarning);
     }
 
-    // Advance the controller on the pump's fixed cadence and keep the
-    // transmission gating aligned with overlay playback.
-    custom_device_.setFrameHook([this] {
-        if (!connection_active_.load(std::memory_order_acquire)) {
-            return;
-        }
-        {
-            std::unique_lock<std::mutex> lock(controller_mutex_, std::try_to_lock);
-            if (lock.owns_lock()) {
-                if (controller_.state() == entrance::ControllerState::kPending &&
-                    client_.currentConnectionId() != controller_connection_id_) {
-                    controller_.cancelPending();
+    stop_worker_.store(false, std::memory_order_release);
+    worker_ = std::thread([this] {
+        std::unique_lock<std::mutex> wait_lock(worker_mutex_);
+        while (!stop_worker_.load(std::memory_order_acquire)) {
+            wait_lock.unlock();
+            if (connection_active_.load(std::memory_order_acquire)) {
+                std::unique_lock<std::mutex> lock(controller_mutex_, std::try_to_lock);
+                if (lock.owns_lock() && connection_active_.load(std::memory_order_acquire)) {
+                    if (controller_.state() == entrance::ControllerState::kPending &&
+                        client_.currentConnectionId() != controller_connection_id_) {
+                        controller_.cancelPending();
+                    }
+                    controller_.poll();
+                    syncTransmission();
                 }
-                controller_.poll();
-                syncTransmission();
             }
+            wait_lock.lock();
+            worker_cv_.wait_for(wait_lock, std::chrono::milliseconds(10), [this] {
+                return stop_worker_.load(std::memory_order_acquire);
+            });
         }
     });
-    custom_device_.setFailureHook([this] {
-        std::lock_guard<std::mutex> lock(controller_mutex_);
-        if (transmission_forced_) {
-            talk_state_.discardForced();
-            transmission_forced_ = false;
-        }
-    });
-
-    if (!custom_device_.start()) {
-        audio_engine_.stopMonitor();
-        client_.log("failed to start custom capture device",
-                    LogSeverity::kError);
-        return false;
-    }
 
     initialized_ = true;
     return true;
@@ -110,7 +100,9 @@ void PluginRuntime::shutdown() {
 
     const bool was_connection_active =
         connection_active_.exchange(false, std::memory_order_acq_rel);
-    custom_device_.stop();
+    stop_worker_.store(true, std::memory_order_release);
+    worker_cv_.notify_all();
+    if (worker_.joinable()) worker_.join();
     audio_engine_.stopMonitor();
 
     // Restore the user's original talk state after the pump has stopped.
@@ -195,17 +187,8 @@ void PluginRuntime::onConnectionEstablished(uint64_t connection_id) {
         return;
     }
 
+    active_connection_id_.store(connection_id, std::memory_order_release);
     connection_active_.store(true, std::memory_order_release);
-    if (!custom_device_.running()) {
-        if (settings_doc_.entrance_sound.local_monitor && !audio_engine_.startMonitor()) {
-            client_.log("local audio monitor failed to start", LogSeverity::kWarning);
-        }
-        if (!custom_device_.start()) {
-            connection_active_.store(false, std::memory_order_release);
-            client_.log("failed to restart custom capture device", LogSeverity::kError);
-            return;
-        }
-    }
 
     std::lock_guard<std::mutex> lock(controller_mutex_);
     controller_.cancelPending();
@@ -219,11 +202,20 @@ void PluginRuntime::onConnectionDisconnected(uint64_t connection_id) {
     connection_active_.store(false, std::memory_order_release);
     std::lock_guard<std::mutex> lock(controller_mutex_);
     if (controller_connection_id_ == connection_id) controller_.cancelPending();
-    custom_device_.stop();
-    audio_engine_.stopMonitor();
     playback_adapter_.stopOverlay();
     talk_state_.discardForced();
     transmission_forced_ = false;
+}
+
+bool PluginRuntime::onCapturedAudio(uint64_t connection_id, int16_t* samples,
+                                    int frames, int channels) {
+    if (!connection_active_.load(std::memory_order_acquire) ||
+        active_connection_id_.load(std::memory_order_acquire) != connection_id ||
+        !samples || frames <= 0 || channels <= 0 || channels > 2) {
+        return false;
+    }
+    return audio_engine_.mixCapturedFrames(samples, static_cast<std::size_t>(frames),
+                                           static_cast<std::size_t>(channels));
 }
 
 void PluginRuntime::reloadSound(
@@ -266,7 +258,7 @@ std::string PluginRuntime::resolveSoundPath(
     if (data_directory_.empty()) {
         return {};
     }
-    return (fs::path(data_directory_) / configured_path).u8string();
+    return (fs::u8path(data_directory_) / configured_path).u8string();
 }
 
 }  // namespace ts3toolkit::plugin

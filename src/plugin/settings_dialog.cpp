@@ -498,7 +498,7 @@ void showSettingsDialog(void* parent, const std::string& config_directory) {
     if (config_directory.empty()) return;
     INITCOMMONCONTROLSEX controls{sizeof(controls), ICC_BAR_CLASSES};
     InitCommonControlsEx(&controls);
-    DialogState state{config::ConfigStore((std::filesystem::path(config_directory) / "ts3toolkit.ini").string()), {}};
+    DialogState state{config::ConfigStore((std::filesystem::u8path(config_directory) / "ts3toolkit.ini").u8string()), {}};
     auto loaded = state.store.load();
     if (loaded.status == config::LoadStatus::kRejected) {
         MessageBoxW(static_cast<HWND>(parent), L"配置文件无效，未覆盖原文件。", L"TS3Toolkit", MB_OK | MB_ICONERROR);

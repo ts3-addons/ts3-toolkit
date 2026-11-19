@@ -66,6 +66,10 @@ bool CustomCaptureDevice::running() const {
     return running_.load();
 }
 
+void CustomCaptureDevice::setCaptureEnabled(bool enabled) {
+    capture_enabled_.store(enabled, std::memory_order_release);
+}
+
 void CustomCaptureDevice::setFrameHook(std::function<void()> hook) {
     frame_hook_ = std::move(hook);
 }
@@ -76,7 +80,8 @@ void CustomCaptureDevice::setFailureHook(std::function<void()> hook) {
 
 void CustomCaptureDevice::pumpOnce() {
     engine_.fillFrame(frame_buffer_.data(), frame_buffer_.size());
-    if (stop_requested_.load(std::memory_order_acquire)) {
+    if (stop_requested_.load(std::memory_order_acquire) ||
+        !capture_enabled_.load(std::memory_order_acquire)) {
         return;
     }
     if (!client_.pushCaptureFrames(device_id_, frame_buffer_.data(),

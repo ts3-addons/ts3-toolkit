@@ -21,6 +21,7 @@ public:
     bool fail_flush = false;
     bool fail_registration = false;
     bool fail_push = false;
+    int push_count = 0;
     int registration_count = 0;
     uint64_t last_input_connection = 0;
     std::string plugin_path = "plugin";
@@ -35,6 +36,7 @@ public:
     }
     bool pushCaptureFrames(const std::string&, const core::Sample*,
                            int) override {
+        ++push_count;
         return !fail_push;
     }
 
@@ -98,14 +100,14 @@ public:
 }  // namespace
 
 void runTests() {
-    // The client may not expose the plugin directory until this callback
-    // returns. Its absence must not prevent attempting device registration.
+    // A missing plugin directory does not require custom device registration.
     FakeClientApi path_unavailable;
     path_unavailable.plugin_path.clear();
     path_unavailable.fail_registration = true;
     plugin::PluginRuntime runtime(path_unavailable);
-    CHECK_TRUE(!runtime.initialize());
-    CHECK_EQ(path_unavailable.registration_count, 1);
+    CHECK_TRUE(runtime.initialize());
+    CHECK_EQ(path_unavailable.registration_count, 0);
+    runtime.shutdown();
 
     FakeClientApi failed_pump;
     failed_pump.fail_push = true;
@@ -114,7 +116,11 @@ void runTests() {
     int failures = 0;
     device.setFailureHook([&failures] { ++failures; });
     device.pumpOnce();
+    CHECK_EQ(failed_pump.push_count, 0);
+    device.setCaptureEnabled(true);
     device.pumpOnce();
+    device.pumpOnce();
+    CHECK_EQ(failed_pump.push_count, 1);
     CHECK_EQ(failures, 1);
 
     constexpr uint64_t kConnection = 1;

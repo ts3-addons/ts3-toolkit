@@ -13,9 +13,11 @@
 
 #include <cstdint>
 #include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 
 namespace ts3toolkit::plugin {
 
@@ -38,6 +40,8 @@ public:
                       uint64_t new_channel_id);
     void onConnectionEstablished(uint64_t connection_id);
     void onConnectionDisconnected(uint64_t connection_id);
+    bool onCapturedAudio(uint64_t connection_id, int16_t* samples,
+                         int frames, int channels);
 
 private:
     // (Re)decode the configured sound and refresh the controller wiring.
@@ -65,7 +69,6 @@ private:
     uint64_t controller_connection_id_ = 0;
     audio::SoundDecoder sound_decoder_;
     audio::DecodedSound prepared_sound_;
-    CustomCaptureDevice custom_device_;
     TalkStateManager talk_state_;
     bool transmission_forced_;
 
@@ -74,6 +77,11 @@ private:
     std::string data_directory_;
     bool initialized_;
     std::atomic<bool> connection_active_{false};
+    std::atomic<uint64_t> active_connection_id_{0};
+    std::atomic<bool> stop_worker_{false};
+    std::mutex worker_mutex_;
+    std::condition_variable worker_cv_;
+    std::thread worker_;
 };
 
 }  // namespace ts3toolkit::plugin

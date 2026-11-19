@@ -45,9 +45,12 @@ bool AudioEngine::startMonitor() {
 }
 
 void AudioEngine::stopMonitor() {
-    if (!monitor_running_) return;
+    {
+        std::lock_guard<std::mutex> lock(overlay_mutex_);
+        if (!monitor_running_) return;
+        monitor_running_ = false;
+    }
     ma_device_uninit(&monitor_device_);
-    monitor_running_ = false;
     monitor_buffer_.reset();
 }
 
@@ -93,8 +96,13 @@ void AudioEngine::fillFrame(core::Sample* output, std::size_t count) {
         output[i] = 0;
     }
 
-    if (!playing_.load(std::memory_order_acquire)) {
-        return;
+    mixCapturedFrames(output, count, 1);
+}
+
+bool AudioEngine::mixCapturedFrames(core::Sample* output, std::size_t count,
+                                    std::size_t channels) {
+    if (!output || channels == 0 || !playing_.load(std::memory_order_acquire)) {
+        return false;
     }
 
     std::lock_guard<std::mutex> lock(overlay_mutex_);
@@ -102,20 +110,26 @@ void AudioEngine::fillFrame(core::Sample* output, std::size_t count) {
     if (remaining == 0) {
         playing_.store(false, std::memory_order_release);
         overlay_position_ = 0;
-        return;
+        return false;
     }
 
     const std::size_t to_mix = (std::min)(count, remaining);
     if (monitor_running_) {
         monitor_buffer_.write(overlay_.data() + overlay_position_, to_mix);
     }
-    core::mixAdd(output, overlay_.data() + overlay_position_, to_mix);
+    for (std::size_t i = 0; i < to_mix; ++i) {
+        for (std::size_t channel = 0; channel < channels; ++channel) {
+            core::mixAdd(output + i * channels + channel,
+                         overlay_.data() + overlay_position_ + i, 1);
+        }
+    }
     overlay_position_ += to_mix;
 
     if (overlay_position_ >= overlay_.size()) {
         playing_.store(false, std::memory_order_release);
         overlay_position_ = 0;
     }
+    return to_mix != 0;
 }
 
 }  // namespace ts3toolkit::audio

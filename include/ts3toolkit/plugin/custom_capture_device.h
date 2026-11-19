@@ -30,6 +30,8 @@ public:
     bool start();
     void stop();
     bool running() const;
+    // Do not feed the client while it opens or closes its sound devices.
+    void setCaptureEnabled(bool enabled);
 
     // Perform exactly one pump iteration. Exposed so unit tests can verify the
     // data flow deterministically without relying on thread timing.
@@ -52,6 +54,7 @@ private:
     std::thread pump_thread_;
     std::atomic<bool> running_;
     std::atomic<bool> stop_requested_;
+    std::atomic<bool> capture_enabled_{false};
 
     // Wakeable wait so stop() returns promptly instead of waiting a full frame.
     std::mutex wait_mutex_;

@@ -261,12 +261,12 @@ ConfigStore::ConfigStore(std::string file_path)
 LoadOutcome ConfigStore::load() const {
     LoadOutcome outcome;
     std::error_code error;
-    if (!fs::exists(file_path_, error)) {
+    if (!fs::exists(fs::u8path(file_path_), error)) {
         outcome.status = LoadStatus::kCreatedDefaults;
         return outcome;
     }
 
-    std::ifstream input(file_path_, std::ios::binary);
+    std::ifstream input(fs::u8path(file_path_), std::ios::binary);
     if (!input) {
         outcome.status = LoadStatus::kRejected;
         return outcome;
@@ -292,7 +292,7 @@ bool ConfigStore::save(const SettingsDocument& document) const {
 
     const std::string temporary_path = file_path_ + ".tmp";
     {
-        std::ofstream output(temporary_path,
+        std::ofstream output(fs::u8path(temporary_path),
                              std::ios::binary | std::ios::trunc);
         if (!output) {
             return false;
@@ -305,10 +305,10 @@ bool ConfigStore::save(const SettingsDocument& document) const {
     }
 
     std::error_code error;
-    fs::rename(temporary_path, file_path_, error);
+    fs::rename(fs::u8path(temporary_path), fs::u8path(file_path_), error);
     if (error) {
         std::error_code remove_error;
-        fs::remove(temporary_path, remove_error);
+        fs::remove(fs::u8path(temporary_path), remove_error);
         return false;
     }
     return true;

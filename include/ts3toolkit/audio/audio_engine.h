@@ -45,6 +45,9 @@ public:
     // Called from the TS3 custom device callback for one frame. The output is
     // always fully written: microphone passthrough, zero-filled on underrun.
     void fillFrame(core::Sample* output, std::size_t count);
+    // Mix the mono overlay into TeamSpeak's interleaved capture buffer.
+    bool mixCapturedFrames(core::Sample* samples, std::size_t frames,
+                           std::size_t channels);
 
 private:
     static void monitorCallback(ma_device* device, void* output,

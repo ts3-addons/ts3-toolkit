@@ -9,7 +9,7 @@ client-side installation is required for other users.
 
 ## Features
 
-- Mix a selected sound into the custom TeamSpeak capture device.
+- Mix a selected sound into TeamSpeak's microphone audio callback.
 - Keep microphone passthrough active when the feature fails or is idle.
 - Configure enable state, volume, delay, cooldown, and a sound range.
 - Decode WAV, MP3, and FLAC input and convert it to 48 kHz mono 16-bit PCM.
@@ -22,8 +22,8 @@ client-side installation is required for other users.
 2. In TeamSpeak 3, open the plugin manager and install
    `build/package/ts3toolkit-0.1.0.ts3_plugin`.
 3. Restart TeamSpeak when prompted.
-4. Open TS3Toolkit settings and choose a sound file, then set TeamSpeak's input
-   device to `TS3Toolkit Virtual Capture`.
+4. Open TS3Toolkit settings and choose a sound file, then select your normal
+   microphone in TeamSpeak's capture settings.
 
 ## Build and test
 
@@ -47,7 +47,7 @@ The code is split into layers with dependencies pointing inward:
 - `audio` — microphone capture, decoding, resampling, and playback.
 - `config` — versioned settings storage and validation.
 - `entrance` — trigger, delay, cooldown, and playback state.
-- `plugin` — TeamSpeak 3 entry points, events, and the custom capture device.
+- `plugin` — TeamSpeak 3 entry points, events, and the audio callback.
 - `platform` — Windows-specific helpers.
 
 Repository layout:
