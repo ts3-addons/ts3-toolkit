@@ -20,7 +20,7 @@ client-side installation is required for other users.
 
 1. Build the package with the commands below.
 2. In TeamSpeak 3, open the plugin manager and install
-   `build/package/ts3toolkit-0.1.0.ts3_plugin`.
+   `build/package/ts3toolkit-0.1.1.ts3_plugin`.
 3. Restart TeamSpeak when prompted.
 4. Open TS3Toolkit settings and choose a sound file, then select your normal
    microphone in TeamSpeak's capture settings.

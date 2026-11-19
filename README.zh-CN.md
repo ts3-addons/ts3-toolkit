@@ -19,7 +19,7 @@ TS3Toolkit 是一个面向 Windows x64 的 TeamSpeak 3 原生客户端插件。�
 
 1. 按下方命令构建插件包。
 2. 在 TeamSpeak 3 中打开插件管理器，安装
-   `build/package/ts3toolkit-0.1.0.ts3_plugin`。
+   `build/package/ts3toolkit-0.1.1.ts3_plugin`。
 3. 根据提示重启 TeamSpeak。
 4. 打开 TS3Toolkit 设置并选择音频文件，在 TeamSpeak 的采集设置中选择正常的麦克风。
 

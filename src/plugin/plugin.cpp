@@ -36,7 +36,7 @@ TS3_EXPORT const char* ts3plugin_name() {
 }
 
 TS3_EXPORT const char* ts3plugin_version() {
-    return "0.1.0";
+    return "0.1.1";
 }
 
 TS3_EXPORT int ts3plugin_apiVersion() {
